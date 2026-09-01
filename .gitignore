@@ -9,8 +9,8 @@ Thumbs.db
 .vscode/
 *.swp
 
-# ZCode 会话产物
-.zcode/
+# ZCode：忽略会话产物，保留 skills（spec-kit 工作流）
+.zcode/plans/
 
 # ===== Go =====
 bin/
