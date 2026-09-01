@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devflow.local/contracts/schemas/run-commit.schema.json",
+  "title": "RunCommit",
+  "description": "Runner 向数据库做原子提交的载荷与回执合同（PRD §11.4）。同 commit_id + 同 payload_hash 幂等返回原回执；同 commit_id 不同 payload_hash 返回冲突（AC25/AC26）。M1 由 Go Runner 在调用智能层后提交；Python 直连提交（内部 commits 端点）属 M3 扩展，沿用本 schema。",
+  "type": "object",
+  "required": ["run_id", "commit_id", "payload_hash", "lease_epoch", "stage", "result"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "commit_id": { "type": "string", "description": "执行方生成的稳定 ID（如 uuidv7），重试必须复用同 ID" },
+    "payload_hash": { "type": "string", "description": "对 result 的规范序列化 SHA-256" },
+    "lease_epoch": { "type": "integer", "minimum": 0, "description": "提交时持有的租约纪元；过期执行者提交会被拒绝（AC24）" },
+    "stage": { "enum": ["issue-analysis"], "description": "M1 固定单阶段；M2 扩展为 node_id" },
+    "result": { "$ref": "issue-agent-output.schema.json" }
+  },
+  "examples": [
+    {
+      "run_id": "run_01J8Z0EXAMPLE",
+      "commit_id": "c_01J8Z1EXAMPLE",
+      "payload_hash": "9f2c…",
+      "lease_epoch": 1,
+      "stage": "issue-analysis",
+      "result": { "run_id": "run_01J8Z0EXAMPLE", "outcome": "NEEDS_INFO", "needs_info_questions": ["使用的版本号是？", "完整报错输出是？"], "usage": { "model": "qwen-plus", "input_tokens": 2800, "output_tokens": 120, "cost_cny": 0.008, "cost_status": "estimated" } }
+    }
+  ]
+}

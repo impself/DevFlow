@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devflow.local/contracts/schemas/approval-bundle.schema.json",
+  "title": "ApprovalBundle",
+  "description": "审批包合同（PRD §15.1-15.2；宪法 II）。审批对象是精确内容与目标，不是抽象任务；content_digest 或 target 任一变化，原批准即失效（AC33）。M1 的 action_type 仅 POST_ISSUE_COMMENT。",
+  "type": "object",
+  "required": ["bundle_id", "case_id", "draft_id", "action_type", "target", "content_digest", "status", "expires_at"],
+  "properties": {
+    "bundle_id": { "type": "string" },
+    "case_id": { "type": "string" },
+    "draft_id": { "type": "string" },
+    "action_type": { "enum": ["POST_ISSUE_COMMENT"], "description": "M1 白名单仅此一种；扩展动作属于宪法修订（宪法 II）" },
+    "target": {
+      "type": "object",
+      "required": ["repo_numeric_id", "issue_number"],
+      "properties": {
+        "repo_numeric_id": { "type": "integer" },
+        "issue_number": { "type": "integer" }
+      }
+    },
+    "content_digest": { "type": "string", "description": "待发布正文的内容摘要（SHA-256），与 reply_drafts.body_digest 一致" },
+    "status": { "enum": ["PENDING", "APPROVED", "EXECUTING", "EXECUTED", "REJECTED", "EXPIRED"] },
+    "expires_at": { "type": "string", "format": "date-time", "description": "created_at + 24h；过期不得执行（PRD §15.2）" },
+    "approved_by": { "type": "string", "description": "服务端认证的操作者标识；不存在来自请求声明的身份（AC32）" },
+    "approved_at": { "type": "string", "format": "date-time" },
+    "idempotency_key": { "type": "string", "description": "重复批准返回原结果（AC35）" }
+  },
+  "examples": [
+    {
+      "bundle_id": "bdl_01J8Z2EXAMPLE",
+      "case_id": "case_01J8Z3EXAMPLE",
+      "draft_id": "draft_01J8Z4EXAMPLE",
+      "action_type": "POST_ISSUE_COMMENT",
+      "target": { "repo_numeric_id": 987654321, "issue_number": 12 },
+      "content_digest": "b5e2…",
+      "status": "PENDING",
+      "expires_at": "2026-09-02T08:00:00Z"
+    }
+  ]
+}

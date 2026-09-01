@@ -1,0 +1,227 @@
+openapi: "3.1.0"
+info:
+  title: DevFlow M1 API 合同
+  version: "0.1.0-m1"
+  description: |
+    M1 主线竖切的对外 API 与内部协议。宪法原则 IV：实现前先定合同；
+    跨语言数据以 contracts/schemas/ 下 JSON Schema 为准。
+    认证：对外端点用操作者会话（M1 单操作者，HTTP Basic 或本地 token，实现时定）；
+    内部端点用共享密钥头 `X-DevFlow-Internal-Token`。
+servers:
+  - url: http://localhost:8080
+    description: Go control 服务
+tags:
+  - name: webhook
+  - name: operator
+  - name: internal
+paths:
+  /healthz:
+    get:
+      tags: [webhook]
+      summary: 健康检查（含依赖状态）
+      responses:
+        "200": { description: OK }
+        "503": { description: 依赖不可用（如数据库） }
+  /api/v1/webhooks/github:
+    post:
+      tags: [webhook]
+      summary: GitHub Webhook 入口
+      description: |
+        验 HMAC（X-Hub-Signature-256）→ inbox_events 落库 →（同一事务）创建 Run → 立即 2xx。
+        目标：1 秒内响应（PRD §26.2）。重复 delivery_id 只保留一条（AC45）。
+        数据库不可用时返回 5xx 失败，不先确认后丢失。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      parameters:
+        - in: header
+          name: X-Hub-Signature-256
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-GitHub-Event
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-GitHub-Delivery
+          required: true
+          schema: { type: string }
+      responses:
+        "202": { description: 已持久化并受理 }
+        "200": { description: 已去重或忽略（范围外事件） }
+        "401": { description: 签名校验失败 }
+        "503": { description: 存储不可用 }
+  /api/v1/repositories:
+    get:
+      tags: [operator]
+      summary: 已接入仓库列表
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [operator]
+      summary: 接入自有仓库并检查能力
+      description: 实测 GitHub App 能力；缺失时 422 返回缺失清单，不创建伪成功接入（AC01）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [repo_full_name]
+              properties:
+                repo_full_name: { type: string, example: "impself/devflow-fixture" }
+      responses:
+        "201": { description: 接入成功，返回数字 ID 与能力快照 }
+        "422": { description: 能力缺失，返回缺失能力清单 }
+  /api/v1/cases:
+    get:
+      tags: [operator]
+      summary: Case 列表（工作台）
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [analyzing, waiting_info, awaiting_approval, replied, closed] }
+      responses:
+        "200": { description: OK }
+  /api/v1/cases/{caseId}:
+    get:
+      tags: [operator]
+      summary: Case 详情（Run 列表、当前草稿与证据、审批状态）
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: OK }
+        "404": { description: 不存在 }
+  /api/v1/runs/{runId}:
+    get:
+      tags: [operator]
+      summary: Run 详情（状态轨迹、提交回执、模型调用与费用）
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: OK }
+  /api/v1/runs/{runId}/cancel:
+    post:
+      tags: [operator]
+      summary: 请求取消 Run
+      description: 持久化 CANCEL_REQUESTED 后返回；不声称外部活动已立即停止（PRD §11.6）。
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string }
+      responses:
+        "202": { description: 取消已受理 }
+        "409": { description: 状态不允许取消 }
+  /api/v1/approval-bundles/{bundleId}/approve:
+    post:
+      tags: [operator]
+      summary: 批准审批包（发布 Issue 评论）
+      description: |
+        服务端认证身份，不信任请求声明（AC32）。重复提交按 idempotency 幂等返回（AC35）。
+        过期或内容/目标已变化时 409，需新审批包（AC33）。
+      parameters:
+        - in: path
+          name: bundleId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: 批准生效（含重复批准的幂等回显） }
+        "409": { description: 已过期 / 内容已变化 / 状态不允许 }
+        "403": { description: 未授权身份 }
+  /api/v1/approval-bundles/{bundleId}/reject:
+    post:
+      tags: [operator]
+      summary: 拒绝审批包
+      parameters:
+        - in: path
+          name: bundleId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: 已拒绝 }
+  /internal/v1/issue-analysis:
+    post:
+      tags: [internal]
+      summary: Go Runner → Python 智能层：生成 Issue 答复（同步）
+      description: |
+        输入为固定快照（Issue 内容版本 + 仓库 head SHA + 预取文件内容）。
+        返回 schema 见 contracts/schemas/issue-agent-output.schema.json；
+        智能层内部完成结构化输出校验与降级，未通过校验不得返回 ANSWER_READY。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [run_id, issue, repo]
+              properties:
+                run_id: { type: string }
+                issue:
+                  type: object
+                  required: [number, title, body, author]
+                  properties:
+                    number: { type: integer }
+                    title: { type: string }
+                    body: { type: string }
+                    author: { type: string }
+                repo:
+                  type: object
+                  required: [numeric_id, full_name, head_sha]
+                  properties:
+                    numeric_id: { type: integer }
+                    full_name: { type: string }
+                    head_sha: { type: string }
+                files:
+                  type: array
+                  description: 预取的固定 SHA 文件内容（path + content）
+                  items:
+                    type: object
+                    properties:
+                      path: { type: string }
+                      content: { type: string }
+      responses:
+        "200":
+          description: 分析结果（IssueAgentOutput 信封）
+          content:
+            application/json:
+              schema:
+                $ref: "schemas/issue-agent-output.schema.json"
+        "503": { description: 智能层不可用（模型超时/配置缺失），Runner 走 FAILED/重试 }
+  /internal/v1/repos/{repoNumericId}/file:
+    get:
+      tags: [internal]
+      summary: Python → Go 只读工具：按固定 SHA 读文件（预留，M1 第二形态启用）
+      description: 仅授权快照内路径；凭据只在 Go 侧（宪法 III）。
+      parameters:
+        - in: path
+          name: repoNumericId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: path
+          required: true
+          schema: { type: string }
+        - in: query
+          name: ref
+          required: true
+          schema: { type: string, description: 固定 commit SHA }
+      responses:
+        "200": { description: 文件内容 }
+        "404": { description: 路径不在授权范围 }
+components:
+  securitySchemes:
+    internalToken:
+      type: apiKey
+      in: header
+      name: X-DevFlow-Internal-Token
+security:
+  - internalToken: []

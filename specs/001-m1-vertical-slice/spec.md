@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-01
 
-**Status**: Draft
+**Status**: Approved（2026-09-01 操作者审核通过）
 
 **Input**: User description: "M1 主线竖切：Webhook 接收自有测试仓库的 Issue 事件 → 建立持久化 Run（任务领取/心跳/租约最小版）→ Issue Agent 生成带引用的答复草稿 → 最小任务界面人工审阅与批准 → 向该 Issue 精确发布一条评论（POST_ISSUE_COMMENT）"
 
