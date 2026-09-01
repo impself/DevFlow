@@ -1,8 +1,9 @@
 # DevFlow Constitution
 <!-- Sync Impact Report
-- Version change: (initial template) → 1.0.0
-- Modified principles: 无（初次批准，原则 I–VII 全部新增）
-- Added sections: Core Principles（I–VII）；技术栈与工程约束；开发工作流与质量门槛；Governance
+- Version change: 1.0.0 → 1.1.0（1.0.0 初次批准于 2026-09-01）
+- Modified principles: 无（既有 I–VII 未改动）
+- Added sections: Core Principle VIII（复用优先与调研先行，操作者 2026-09-01 提出）；
+  「开发工作流与质量门槛」新增 plan 阶段先行调研交付要求
 - Removed sections: 无
 - Follow-up TODOs: 无
 -->
@@ -93,6 +94,18 @@ MUST NOT 通过取消审批、取消隔离或伪造测试通过来满足交付�
 每 Run 并发 3 节点、单计划 ≤12 节点、单 Run ≤24 次模型调用且 ≤900 秒、
 Case 累计 5 Run / 72 次调用 / 6 个补丁版本、单 Job 测试 ≤180 秒（PRD §21.5）。
 
+### VIII. 复用优先与调研先行
+
+启动项目或制定较大技术方案前，MUST 先调研 GitHub 等平台的同类项目、官方文档、
+实现思路与源码。存在成熟方案时，MUST 先评估许可证（license）兼容性、维护状态、
+安全风险与适配成本，再决定复用、借鉴或自研；可复用内容直接取用，多套开源方案
+交叉对比，取其优势、剔除缺陷糟粕。引用第三方成果 MUST 如实标注出处，不得把
+复用内容表述为自研（与原则 V 一致）。简单 bug 修复、明确的小改动或离线任务
+不强制调研。
+
+理由：杜绝闭门造车与重复造轮子；对已有生态的正确取用与署名，本身就是本项目的
+工程可信度组成部分。
+
 ## 技术栈与工程约束
 
 - 服务层：Go + Gin（Controller、Runner、Publisher 同仓不同进程）；智能层：
@@ -117,6 +130,9 @@ Case 累计 5 Run / 72 次调用 / 6 个补丁版本、单 Job 测试 ≤180 秒
   难测样本、把风险动作改称"草稿"或降级安全检查来通过验收。
 - 每个里程碑以可运行闭环 + 可解释失败退出（PRD §27.2–27.3）；周进度以可演示闭环衡量，
   不以 Agent 类、接口或表的数量衡量。
+- 每个较大方案的 `$speckit-plan` MUST 包含先行调研记录：候选开源项目与官方方案、
+  license 与维护状态、安全风险、适配成本、交叉对比与选型结论（原则 VIII）。
+  不适合复用的部分 MUST 说明自研理由。
 
 ## Governance
 
@@ -130,4 +146,4 @@ Case 累计 5 Run / 72 次调用 / 6 个补丁版本、单 Job 测试 ≤180 秒
 - 运行时开发指导以 `docs/DevFlow 完整 PRD.md` 为准；其与本宪法冲突处按 Governance
   流程处理。
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-01 | **Last Amended**: 2026-09-01
+**Version**: 1.1.0 | **Ratified**: 2026-09-01 | **Last Amended**: 2026-09-01
