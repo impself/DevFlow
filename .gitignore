@@ -1,0 +1,47 @@
+# ===== 通用 =====
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+
+# ZCode 会话产物
+.zcode/
+
+# ===== Go =====
+bin/
+*.exe
+*.test
+*.out
+coverage.txt
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# ===== Node / 前端 =====
+node_modules/
+dist/
+.vite/
+*.local
+
+# ===== 环境与凭据（严禁入库：token、密钥） =====
+.env
+.env.*
+!.env.example
+
+# ===== 本地数据 =====
+*.db
+*.sqlite3
