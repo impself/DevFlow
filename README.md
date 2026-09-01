@@ -62,6 +62,9 @@ $speckit-constitution   项目原则（已完成，v1.0.0）
 
 ## 开发环境现状（2026-09-01 核对）
 
-- 就绪：git 2.55、Node 22、Docker 29、PostgreSQL 18.1、Python 3.9、specify 1.0.1
-- 待办：**Go 未安装**（M1 的 Go 服务需要）；Python 3.9 偏旧，AgentScope 通常要求 ≥3.10，
-  实现阶段需升级（建议用 uv 管理 3.11+ 虚拟环境）
+- 就绪：git 2.55、Node 22、Docker 29、PostgreSQL 18.1、specify 1.0.1
+- Go 1.24.0（`C:\Program Files\Go\bin`）：已安装；部分 shell 的 PATH 未包含它，
+  命令找不到时把该目录加入 PATH 或使用完整路径
+- Python：conda base 为 3.13.5（`D:\conda\python.exe`，满足 AgentScope ≥3.10）；
+  另有 Python 3.9（`D:\python39`）排在 PATH 前列，注意不要误用。
+  实现 runtime 服务时为项目创建独立虚拟环境（conda env 或 uv venv）
