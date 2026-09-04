@@ -1,0 +1,23 @@
+# 可选的本地 PostgreSQL——本机已装 PG 18.1 时无需启动（docker compose up -d）。
+# 注意：这里的账号密码只是本地开发占位；真实凭据走 .env，严禁入库（宪法 III）。
+# 生产/隔离执行镜像必须固定 digest（宪法 III）；本地开发库用固定 major 版本 tag 即可。
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: devflow-db
+    environment:
+      POSTGRES_USER: devflow
+      POSTGRES_PASSWORD: devflow
+      POSTGRES_DB: devflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - devflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devflow -d devflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  devflow_pgdata:
