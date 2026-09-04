@@ -58,7 +58,7 @@ $speckit-constitution   项目原则（已完成，v1.0.0）
 
 | Spec | 名称 | 状态 | 里程碑 |
 | --- | --- | --- | --- |
-| [001-m1-vertical-slice](specs/001-m1-vertical-slice/spec.md) | M1 主线竖切：Issue 接收到有据答复与批准发布 | Approved；plan/research/contracts 已产出，待 `$speckit-tasks` | M1 |
+| [001-m1-vertical-slice](specs/001-m1-vertical-slice/spec.md) | M1 主线竖切：Issue 接收到有据答复与批准发布 | Approved；tasks.md 已生成（33 项，教学式逐任务 review），待实现 | M1 |
 
 ## 开发环境现状（2026-09-01 核对）
 
