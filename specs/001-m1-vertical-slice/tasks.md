@@ -39,7 +39,7 @@
 
 - [x] T006 数据库迁移 V1：`services/control/internal/store/migrations/0001_init.sql` 按 data-model.md 建 10 张表（operators、repositories、inbox_events、cases、runs、run_commits、artifacts、reply_drafts、approval_bundles、actions、model_calls），含 delivery_id 唯一约束、runs 部分索引（QUEUED/RECOVERING）、(run_id, commit_id) 主键
 - [x] T007 [P] sqlc 查询集：`internal/store/queries/*.sql`（inbox 去重插入、claim_run 的 `FOR UPDATE SKIP LOCKED` 领取、心跳续租 `WHERE lease_epoch=$n`、commit 幂等 `ON CONFLICT` 回执、case/run 查询）+ `sqlc.yaml` + 生成代码入库
-- [ ] T008 Store 封装：`internal/store/store.go`（pgx 连接池、`WithTx` 事务辅助、错误语义映射），被 controller/publisher 依赖
+- [x] T008 Store 封装：`internal/store/store.go`（pgx 连接池、`WithTx` 事务辅助、错误语义映射），被 controller/publisher 依赖
 - [ ] T009 [P] GitHub 接入层：`internal/github/client.go`（ghinstallation App JWT + installation token 的 RoundTripper、go-github client 工厂、按仓库取 client）、`internal/github/webhook.go`（raw body + `ValidateSignature` + `ParseWebHook` 封装）
 - [ ] T010 Runner 骨架：`services/control/cmd/runner/main.go` + `internal/controller/worker.go`（worker goroutine 池、并发上限 1、context 优雅停机、心跳循环挂钩子）
 

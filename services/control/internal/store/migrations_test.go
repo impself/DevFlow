@@ -56,12 +56,9 @@ func TestMigrateIdempotent(t *testing.T) {
 }
 
 // TestSchemaConstraints 冒烟验证三条协议级约束（详见 data-model.md）。
+// 用 setupQueries 清场：夹具不与历史残留冲突，测试顺序无关。
 func TestSchemaConstraints(t *testing.T) {
-	pool := testPool(t)
-	ctx := context.Background()
-	if err := Migrate(ctx, pool); err != nil {
-		t.Fatalf("迁移: %v", err)
-	}
+	pool, _, ctx := setupQueries(t)
 
 	t.Run("delivery_id 唯一（AC45 投递去重）", func(t *testing.T) {
 		t.Cleanup(func() {
