@@ -13,3 +13,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T004 | [T004-frontend-scaffold.md](./T004-frontend-scaffold.md) | 前端脚手架：Vite 代理、TS 严格模式、手工搭建理由 |
 | T005 | [T005-cross-cutting.md](./T005-cross-cutting.md) | 横切设施：slog 收口、constant-time 鉴权、追踪占位 |
 | T006 | [T006-db-migrations.md](./T006-db-migrations.md) | 数据库 V1：11 张表、部分索引、幂等迁移器、测试清理纪律 |
+| T007 | [T007-sqlc-queries.md](./T007-sqlc-queries.md) | sqlc 查询集：SKIP LOCKED 领取、epoch 心跳、幂等回执 |
