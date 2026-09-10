@@ -185,6 +185,39 @@ func (q *Queries) HeartbeatRun(ctx context.Context, arg HeartbeatRunParams) (int
 	return result.RowsAffected(), nil
 }
 
+const insertRun = `-- name: InsertRun :one
+INSERT INTO runs (id, case_id, trigger_event_id, input_snapshot)
+VALUES ($1, $2, $3, $4)
+RETURNING id, status
+`
+
+type InsertRunParams struct {
+	ID             string
+	CaseID         string
+	TriggerEventID string
+	InputSnapshot  []byte
+}
+
+type InsertRunRow struct {
+	ID     string
+	Status string
+}
+
+// Webhook 同一事务里创建 run：状态默认 QUEUED，等 worker 领取。
+// input_snapshot 是触发时刻的固定快照（issue 内容版本 + 策略版本，FR-3），
+// 之后无论 Issue 怎么编辑，本次执行都以快照为准。
+func (q *Queries) InsertRun(ctx context.Context, arg InsertRunParams) (InsertRunRow, error) {
+	row := q.db.QueryRow(ctx, insertRun,
+		arg.ID,
+		arg.CaseID,
+		arg.TriggerEventID,
+		arg.InputSnapshot,
+	)
+	var i InsertRunRow
+	err := row.Scan(&i.ID, &i.Status)
+	return i, err
+}
+
 const insertRunCommit = `-- name: InsertRunCommit :one
 INSERT INTO run_commits (run_id, commit_id, payload_hash, lease_epoch, stage, result, seq)
 VALUES ($1, $2, $3, $4, $5, $6, $7)

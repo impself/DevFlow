@@ -10,14 +10,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/impself/DevFlow/services/control/internal/config"
+	"github.com/impself/DevFlow/services/control/internal/controller"
+	"github.com/impself/DevFlow/services/control/internal/github"
 	"github.com/impself/DevFlow/services/control/internal/obs"
+	"github.com/impself/DevFlow/services/control/internal/store"
 )
 
 func main() {
@@ -51,20 +54,38 @@ func run() error {
 	}
 	defer shutdownTracer()
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	st, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("创建数据库连接池: %w", err)
+		return err
 	}
-	defer pool.Close()
+	defer st.Close()
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if err := pool.Ping(pingCtx); err != nil {
-		return fmt.Errorf("数据库不可达: %w", err)
+	// 启动即迁移：库不就绪不开门（fail-fast）。
+	if err := store.Migrate(ctx, st.Pool()); err != nil {
+		return fmt.Errorf("迁移: %w", err)
 	}
 	slog.Info("数据库连接成功")
 
-	deps := &server{pool: pool}
+	// GitHub App 身份：启动时读私钥并验证可解析（fail-fast），
+	// installation token 由 ghinstallation 在首次调用时惰性换取。
+	privateKeyPEM, err := os.ReadFile(cfg.GitHubPrivateKeyPath)
+	if err != nil {
+		return fmt.Errorf("读取 GitHub App 私钥: %w", err)
+	}
+	appID, err := strconv.ParseInt(cfg.GitHubAppID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("GITHUB_APP_ID 应为数字: %w", err)
+	}
+	ghFactory, err := github.NewClientFactory(appID, privateKeyPEM)
+	if err != nil {
+		return err
+	}
+	_ = ghFactory // T014（预取文件）与 publisher（发布评论）将注入使用
+
+	deps := &server{
+		store:   st,
+		webhook: controller.NewWebhookHandler(st, cfg.GitHubWebhookSecret),
+	}
 	srv := &http.Server{
 		Addr:    cfg.APIAddr,
 		Handler: deps.router(),
@@ -94,11 +115,11 @@ func run() error {
 	}
 }
 
-// server 持有路由处理函数共享的依赖（连接池）。
-// 依赖集中注入而不是用全局变量，是为了让每个 handler 都可以独立构造、单测；
-// cfg 目前无人消费，等 handler 真正需要配置时再加，避免"看似已注入"的错觉。
+// server 持有路由处理函数共享的依赖。
+// 依赖集中注入而不是用全局变量，是为了让每个 handler 都可以独立构造、单测。
 type server struct {
-	pool *pgxpool.Pool
+	store   *store.Store
+	webhook *controller.WebhookHandler
 }
 
 func (s *server) router() *gin.Engine {
@@ -108,6 +129,8 @@ func (s *server) router() *gin.Engine {
 	r.Use(gin.Recovery())
 
 	r.GET("/healthz", s.healthz)
+	// webhook 的身份认证就是 HMAC 验签本身，不再叠加其他认证
+	r.POST("/webhook", s.webhook.Handle)
 	return r
 }
 
@@ -117,7 +140,7 @@ func (s *server) healthz(c *gin.Context) {
 	pingCtx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 	defer cancel()
 
-	dbOK := s.pool.Ping(pingCtx) == nil
+	dbOK := s.store.Pool().Ping(pingCtx) == nil
 	code := http.StatusOK
 	status := "ok"
 	if !dbOK {

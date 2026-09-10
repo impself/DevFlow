@@ -2,6 +2,9 @@
 
 M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解：每个任务完成后记录
 改动内容、关键语法、背后原理、设计权衡与放弃的备选方案，供操作者 review。
+> **教学重点（2026-09-11 更新，面试导向）**：笔记聚焦 agent 工程、后端架构与 Go 语法；
+> 前端/部署等外围任务只记结论，不展开。
+
 
 > 执行模式（2026-09-10 操作者更新）：任务完成后**不再暂停等待确认**，自动进入下一任务；
 > 本目录即事后 review 的载体。
@@ -17,3 +20,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T008 | [T008-store-facade.md](./T008-store-facade.md) | Store 门面：WithTx 事务作用域、错误语义映射、夹具生命周期 |
 | T009 | [T009-github-access.md](./T009-github-access.md) | GitHub 接入层：App/installation 身份、RoundTripper、HMAC 验签、review 工作流首秀 |
 | T010 | [T010-runner-worker.md](./T010-runner-worker.md) | Runner 引擎：领取循环、心跳失权、fencing、防毒循环、每包专属测试库 |
+| T011 | [T011-webhook-entry.md](./T011-webhook-entry.md) | Webhook：HTTP 语义×事务×幂等去重、闭包遮蔽陷阱（面试考点向） |

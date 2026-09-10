@@ -51,3 +51,38 @@ func (q *Queries) InsertInboxEvent(ctx context.Context, arg InsertInboxEventPara
 	err := row.Scan(&i.ID, &i.ReceivedAt)
 	return i, err
 }
+
+const linkInboxEventToRun = `-- name: LinkInboxEventToRun :exec
+UPDATE inbox_events
+SET run_id = $2, process_status = 'processed', processed_at = now()
+WHERE id = $1
+`
+
+type LinkInboxEventToRunParams struct {
+	ID    string
+	RunID *string
+}
+
+// 业务处理完成：关联触发的 run 并标记 processed。
+// :execrows 不需要——调用方在同一事务里，事务成败即成败。
+func (q *Queries) LinkInboxEventToRun(ctx context.Context, arg LinkInboxEventToRunParams) error {
+	_, err := q.db.Exec(ctx, linkInboxEventToRun, arg.ID, arg.RunID)
+	return err
+}
+
+const markInboxEventStatus = `-- name: MarkInboxEventStatus :exec
+UPDATE inbox_events
+SET process_status = $2, processed_at = now()
+WHERE id = $1
+`
+
+type MarkInboxEventStatusParams struct {
+	ID            string
+	ProcessStatus string
+}
+
+// 范围外/验签失败等不入业务流的事件：留痕但标记最终态（AC 取证可查）。
+func (q *Queries) MarkInboxEventStatus(ctx context.Context, arg MarkInboxEventStatusParams) error {
+	_, err := q.db.Exec(ctx, markInboxEventStatus, arg.ID, arg.ProcessStatus)
+	return err
+}

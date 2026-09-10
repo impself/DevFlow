@@ -57,3 +57,11 @@ WHERE status = 'RUNNING' AND lease_expires_at < now();
 
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1;
+
+-- Webhook 同一事务里创建 run：状态默认 QUEUED，等 worker 领取。
+-- input_snapshot 是触发时刻的固定快照（issue 内容版本 + 策略版本，FR-3），
+-- 之后无论 Issue 怎么编辑，本次执行都以快照为准。
+-- name: InsertRun :one
+INSERT INTO runs (id, case_id, trigger_event_id, input_snapshot)
+VALUES ($1, $2, $3, $4)
+RETURNING id, status;
