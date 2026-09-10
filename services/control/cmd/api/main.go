@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/impself/DevFlow/services/control/internal/config"
+	"github.com/impself/DevFlow/services/control/internal/obs"
 )
 
 func main() {
@@ -29,6 +30,10 @@ func main() {
 // run 把 main 的逻辑收拢到一个返回 error 的函数里：
 // 失败路径只有一条（返回 err），成功路径的 defer 都能正常执行。
 func run() error {
+	// 横切设施最先装配：此后所有日志（含配置报错）都是结构化 JSON。
+	// Setup 内部已 slog.SetDefault，业务代码统一用 slog 包级函数即可。
+	obs.Setup("devflow-api")
+
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -38,6 +43,13 @@ func run() error {
 	// 下面 server 与数据库都挂在这个 ctx 的生命周期上，Ctrl+C 即触发优雅停机。
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// M1 为 no-op 追踪占位：API 就位，未来换 OTLP exporter 时业务代码零改动。
+	shutdownTracer, err := obs.InitTracer(ctx, "devflow-api")
+	if err != nil {
+		return fmt.Errorf("初始化追踪: %w", err)
+	}
+	defer shutdownTracer()
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
