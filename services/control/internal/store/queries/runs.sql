@@ -58,6 +58,10 @@ WHERE status = 'RUNNING' AND lease_expires_at < now();
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1;
 
+-- 取消检查：执行方在长步骤之间轮询，尽早发现 CANCEL_REQUESTED 并停手。
+-- name: GetRunStatus :one
+SELECT status FROM runs WHERE id = $1;
+
 -- Webhook 同一事务里创建 run：状态默认 QUEUED，等 worker 领取。
 -- input_snapshot 是触发时刻的固定快照（issue 内容版本 + 策略版本，FR-3），
 -- 之后无论 Issue 怎么编辑，本次执行都以快照为准。

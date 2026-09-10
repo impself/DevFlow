@@ -164,6 +164,18 @@ func (q *Queries) GetRunCommitPayloadHash(ctx context.Context, arg GetRunCommitP
 	return payload_hash, err
 }
 
+const getRunStatus = `-- name: GetRunStatus :one
+SELECT status FROM runs WHERE id = $1
+`
+
+// 取消检查：执行方在长步骤之间轮询，尽早发现 CANCEL_REQUESTED 并停手。
+func (q *Queries) GetRunStatus(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getRunStatus, id)
+	var status string
+	err := row.Scan(&status)
+	return status, err
+}
+
 const heartbeatRun = `-- name: HeartbeatRun :execrows
 UPDATE runs SET lease_expires_at = now() + interval '30 seconds'
 WHERE id = $1 AND lease_owner = $2 AND lease_epoch = $3

@@ -22,3 +22,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T010 | [T010-runner-worker.md](./T010-runner-worker.md) | Runner 引擎：领取循环、心跳失权、fencing、防毒循环、每包专属测试库 |
 | T011 | [T011-webhook-entry.md](./T011-webhook-entry.md) | Webhook：HTTP 语义×事务×幂等去重、闭包遮蔽陷阱（面试考点向） |
 | T012 | [T012-event-filtering.md](./T012-event-filtering.md) | 触发面防线：过滤规则、防循环、纯函数+表驱动（agent 工程考点） |
+| T013 | [T013-lease-protocol.md](./T013-lease-protocol.md) | 提交回执协议：幂等键+内容哈希、fencing 回滚、合作式取消（面试考点） |
