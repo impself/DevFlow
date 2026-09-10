@@ -9,3 +9,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | 任务 | 笔记 | 主题 |
 | --- | --- | --- |
 | T002 | [T002-go-api-skeleton.md](./T002-go-api-skeleton.md) | Go API 骨架：优雅停机、fail-fast 配置、healthz 依赖状态 |
+| T003 | [T003-python-runtime-skeleton.md](./T003-python-runtime-skeleton.md) | Python 智能层：pyproject、venv、degraded 语义 |

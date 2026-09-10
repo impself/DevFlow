@@ -1,0 +1,34 @@
+# DevFlow 智能层（runtime）工程定义。
+# Python 3.13 独立 venv（本机解释器 D:\conda\python.exe，3.13.5）：
+#   python -m venv .venv
+#   .venv\Scripts\pip install -e .
+# 版本策略（research.md §5）：agentscope 钉住 2.0（大重写，1.x 教程全部失效）；
+# 其余给出下限，由 pip 解析最新兼容版。
+[project]
+name = "devflow-runtime"
+version = "0.1.0"
+description = "DevFlow 智能层：AgentScope 驱动的 Issue 分析服务（内部协议，无数据库凭据）"
+requires-python = ">=3.11"
+dependencies = [
+    "agentscope==2.0.7",
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "uvicorn[standard]>=0.32",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app", "app.agents", "app.contracts"]
+
+# 合同测试与单元测试：pytest 装在 venv 里，不进运行时依赖
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "jsonschema>=4.23",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
