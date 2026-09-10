@@ -86,7 +86,7 @@ WHERE status = 'RUNNING' AND lease_expires_at < now()
 `
 
 // 清道夫：租约过期的 RUNNING 统统翻成 RECOVERING，等待被重新领取接管。
-// 由 api 进程周期调用（与 worker 解耦：不需要心跳方自己认罪）。
+// 由 runner 进程周期调用（与领取循环同进程，无需心跳方自己认罪）。
 func (q *Queries) ExpireStaleRuns(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, expireStaleRuns)
 	if err != nil {

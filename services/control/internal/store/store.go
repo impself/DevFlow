@@ -42,6 +42,10 @@ func Open(ctx context.Context, databaseURL string) (*Store, error) {
 
 func (s *Store) Close() { s.pool.Close() }
 
+// Pool 暴露连接池给极少数需要直接执行 SQL 的场景（迁移、运维脚本）。
+// 业务代码应走内嵌的 Queries 与 WithTx，不要经 Pool 手写查询。
+func (s *Store) Pool() *pgxpool.Pool { return s.pool }
+
 // WithTx 把「开启事务 → 执行 fn → 提交/回滚」收成一个函数作用域：
 //   - fn 返回 nil：提交；
 //   - fn 返回 error：回滚并把错误上抛；

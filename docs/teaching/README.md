@@ -16,3 +16,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T007 | [T007-sqlc-queries.md](./T007-sqlc-queries.md) | sqlc 查询集：SKIP LOCKED 领取、epoch 心跳、幂等回执 |
 | T008 | [T008-store-facade.md](./T008-store-facade.md) | Store 门面：WithTx 事务作用域、错误语义映射、夹具生命周期 |
 | T009 | [T009-github-access.md](./T009-github-access.md) | GitHub 接入层：App/installation 身份、RoundTripper、HMAC 验签、review 工作流首秀 |
+| T010 | [T010-runner-worker.md](./T010-runner-worker.md) | Runner 引擎：领取循环、心跳失权、fencing、防毒循环、每包专属测试库 |
