@@ -28,7 +28,7 @@
 ## Phase 1: Setup（项目初始化）
 
 - [x] T001 创建目录骨架与工程文件：`services/control/{cmd/{api,runner},internal/{store,github,controller,policy,publisher}}`、`services/runtime/app/{agents,contracts}`、`web/`、`infra/`、`tests/`；初始化 `go.mod`（module devflow/control）、`infra/docker-compose.yml`（可选 PG 18）、`infra/.env.example`
-- [ ] T002 [P] Go API 服务骨架：`services/control/cmd/api/main.go`（Gin + `/healthz` 含依赖状态）、`internal/config/config.go`（env 配置加载与启动校验，缺失配置明确报错——PRD §29.3）
+- [x] T002 [P] Go API 服务骨架：`services/control/cmd/api/main.go`（Gin + `/healthz` 含依赖状态）、`internal/config/config.go`（env 配置加载与启动校验，缺失配置明确报错——PRD §29.3）
 - [ ] T003 [P] Python 智能层骨架：`services/runtime/pyproject.toml`（agentscope==2.0.7、fastapi、pydantic、uvicorn，Python 3.13 venv 说明）、`app/main.py`（FastAPI + `/healthz`）
 - [ ] T004 [P] 前端脚手架：Vite + React + TypeScript（`web/`），最小依赖（不引组件库），代理到 `:8080`
 - [ ] T005 [P] 横切设施：结构化日志（`log/slog`）封装、`X-DevFlow-Internal-Token` 内部认证 Gin 中间件、OTel 初始化占位（`internal/obs/`）

@@ -1,0 +1,120 @@
+// api 服务是 DevFlow 控制层的对外入口：GitHub Webhook、操作者 API 与审批发布。
+// M1 阶段本文件只装配骨架：配置加载 → 数据库连接 → 路由 → 优雅停机。
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/impself/DevFlow/services/control/internal/config"
+)
+
+func main() {
+	if err := run(); err != nil {
+		slog.Error("api 服务退出", "err", err)
+		os.Exit(1)
+	}
+}
+
+// run 把 main 的逻辑收拢到一个返回 error 的函数里：
+// 失败路径只有一条（返回 err），成功路径的 defer 都能正常执行。
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	// NotifyContext 把 SIGINT/SIGTERM 转成 context 取消信号：
+	// 下面 server 与数据库都挂在这个 ctx 的生命周期上，Ctrl+C 即触发优雅停机。
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("创建数据库连接池: %w", err)
+	}
+	defer pool.Close()
+
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := pool.Ping(pingCtx); err != nil {
+		return fmt.Errorf("数据库不可达: %w", err)
+	}
+	slog.Info("数据库连接成功")
+
+	deps := &server{cfg: cfg, pool: pool}
+	srv := &http.Server{
+		Addr:    cfg.APIAddr,
+		Handler: deps.router(),
+	}
+
+	// HTTP 服务在独立 goroutine 中运行，主 goroutine 等待退出信号。
+	serverErr := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+	slog.Info("api 服务已启动", "addr", cfg.APIAddr)
+
+	select {
+	case err := <-serverErr:
+		return fmt.Errorf("http 服务异常退出: %w", err)
+	case <-ctx.Done():
+		// 收到信号：给在途请求最多 10 秒完成，超时强制返回。
+		shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelShutdown()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Warn("优雅停机超时，强制返回", "err", err)
+		}
+		slog.Info("api 服务已优雅退出")
+		return nil
+	}
+}
+
+// server 持有路由处理函数共享的依赖（配置、连接池）。
+// 依赖集中注入而不是用全局变量，是为了让每个 handler 都可以独立构造、单测。
+type server struct {
+	cfg  config.Config
+	pool *pgxpool.Pool
+}
+
+func (s *server) router() *gin.Engine {
+	// gin.New() 创建不带任何中间件的白板引擎；
+	// gin.Default() 会附赠 Logger+Recovery，这里显式添加以保持依赖可见。
+	r := gin.New()
+	r.Use(gin.Recovery())
+
+	r.GET("/healthz", s.healthz)
+	return r
+}
+
+// healthz 是健康检查与依赖状态页（PRD §26.3）：
+// 数据库可达返回 200；不可达返回 503 与 degraded 状态——不掩盖依赖故障。
+func (s *server) healthz(c *gin.Context) {
+	pingCtx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+
+	dbOK := s.pool.Ping(pingCtx) == nil
+	code := http.StatusOK
+	status := "ok"
+	if !dbOK {
+		code = http.StatusServiceUnavailable
+		status = "degraded"
+	}
+	c.JSON(code, gin.H{
+		"status":   status,
+		"database": dbOK,
+		"time":     time.Now().UTC().Format(time.RFC3339),
+	})
+}
