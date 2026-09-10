@@ -75,10 +75,9 @@ func (h *WebhookHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	// 事件过滤的最小集（T012 扩展 reopened 与自评论去重）：
-	// 只有 opened 建新 run——每次 edited/closed 都触发模型调用既烧钱又无意义。
-	if issuesEvt.GetAction() != "opened" {
-		h.ignore(c, delivery, body, issuesEvt.Repo.GetID(), "action="+issuesEvt.GetAction())
+	// 事件过滤规则集中在 events.go（纯函数，含防循环与 reopened 语义）
+	if rej := decideIssueEvent(issuesEvt); rej.ignore {
+		h.ignore(c, delivery, body, issuesEvt.Repo.GetID(), rej.reason)
 		return
 	}
 

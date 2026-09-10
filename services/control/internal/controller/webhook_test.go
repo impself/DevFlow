@@ -158,6 +158,35 @@ func TestWebhook(t *testing.T) {
 		}
 	})
 
+	t.Run("reopened：复用同 case，新建第二条 run", func(t *testing.T) {
+		r, pool := newWebhookRouter(t, secret)
+		const reopened = `{"action":"reopened","issue":{"id":5001,"number":7,"title":"标题","body":"正文"},"repository":{"id":42,"name":"n","owner":{"login":"o"}}}`
+		if code, _ := do(t, r, signedRequest(t, secret, "issues", "d-r1", openedPayload)); code != http.StatusAccepted {
+			t.Fatalf("opened 应 202")
+		}
+		if code, _ := do(t, r, signedRequest(t, secret, "issues", "d-r2", reopened)); code != http.StatusAccepted {
+			t.Fatalf("reopened 应 202")
+		}
+		if got := count(t, pool, `SELECT count(*) FROM cases`); got != 1 {
+			t.Fatalf("reopened 应复用同一 case，得到 %d 条", got)
+		}
+		if got := count(t, pool, `SELECT count(*) FROM runs`); got != 2 {
+			t.Fatalf("reopened 应新建 run（共 2 条），得到 %d", got)
+		}
+	})
+
+	t.Run("bot 触发的事件：防循环忽略（AC45）", func(t *testing.T) {
+		r, pool := newWebhookRouter(t, secret)
+		const botOpened = `{"action":"opened","sender":{"login":"devflow-bot[bot]"},"issue":{"id":5003,"number":9,"title":"t","body":"b"},"repository":{"id":42,"name":"n","owner":{"login":"o"}}}`
+		code, _ := do(t, r, signedRequest(t, secret, "issues", "d-bot", botOpened))
+		if code != http.StatusOK {
+			t.Fatalf("bot 事件应 200 ignored，得到 %d", code)
+		}
+		if got := count(t, pool, `SELECT count(*) FROM runs`); got != 0 {
+			t.Fatalf("bot 事件不应建 run，得到 %d", got)
+		}
+	})
+
 	t.Run("不同 issue 同仓：各建各的 case 与 run", func(t *testing.T) {
 		r, pool := newWebhookRouter(t, secret)
 		do(t, r, signedRequest(t, secret, "issues", "d-6a", openedPayload))
