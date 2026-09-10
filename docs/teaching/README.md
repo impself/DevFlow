@@ -15,3 +15,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T006 | [T006-db-migrations.md](./T006-db-migrations.md) | 数据库 V1：11 张表、部分索引、幂等迁移器、测试清理纪律 |
 | T007 | [T007-sqlc-queries.md](./T007-sqlc-queries.md) | sqlc 查询集：SKIP LOCKED 领取、epoch 心跳、幂等回执 |
 | T008 | [T008-store-facade.md](./T008-store-facade.md) | Store 门面：WithTx 事务作用域、错误语义映射、夹具生命周期 |
+| T009 | [T009-github-access.md](./T009-github-access.md) | GitHub 接入层：App/installation 身份、RoundTripper、HMAC 验签、review 工作流首秀 |
