@@ -5,7 +5,6 @@ package middleware
 import (
 	"crypto/subtle"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,12 +27,4 @@ func InternalTokenAuth(token string) gin.HandlerFunc {
 		}
 		c.Next()
 	}
-}
-
-// stripToken 防误用辅助：日志中打印令牌时只留前 4 位，供人工比对配置是否生效。
-func StripToken(token string) string {
-	if len(token) <= 4 {
-		return "****"
-	}
-	return strings.Clone(token[:4]) + "****"
 }

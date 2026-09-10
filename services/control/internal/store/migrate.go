@@ -7,7 +7,8 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"sort"
+	"path"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -16,6 +17,10 @@ import (
 var migrationsFS embed.FS
 
 // Migrate 把 migrations/ 下未应用的 .sql 按文件名序应用到位。
+//
+// 并发约束：账本检查与执行不是原子对，两个进程同时启动会有一方撞
+// "relation already exists"。M1 单实例部署可接受；将来多实例时在开头加
+// pg_advisory_lock 即可，账本协议不用动。
 //
 // 幂等机制：schema_migrations 是"账本"，记录已应用的版本号；重跑时逐条比对，
 // 已应用即跳过——Checkpoint 要求「迁移可重复执行」由此保证。
@@ -35,10 +40,10 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("读取迁移目录: %w", err)
 	}
-	sort.Strings(entries) // 文件名即版本序：0001_ < 0002_ < …
+	slices.Sort(entries) // 文件名即版本序：0001_ < 0002_ < …
 
 	for _, name := range entries {
-		version := name
+		version := path.Base(name) // 账本只记文件名，不含目录前缀
 		var already bool
 		err := pool.QueryRow(ctx,
 			`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)`, version,

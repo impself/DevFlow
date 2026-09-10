@@ -45,3 +45,6 @@ dist/
 # ===== 本地数据 =====
 *.db
 *.sqlite3
+
+# TypeScript 增量构建缓存
+*.tsbuildinfo

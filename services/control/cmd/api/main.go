@@ -64,7 +64,7 @@ func run() error {
 	}
 	slog.Info("数据库连接成功")
 
-	deps := &server{cfg: cfg, pool: pool}
+	deps := &server{pool: pool}
 	srv := &http.Server{
 		Addr:    cfg.APIAddr,
 		Handler: deps.router(),
@@ -94,10 +94,10 @@ func run() error {
 	}
 }
 
-// server 持有路由处理函数共享的依赖（配置、连接池）。
-// 依赖集中注入而不是用全局变量，是为了让每个 handler 都可以独立构造、单测。
+// server 持有路由处理函数共享的依赖（连接池）。
+// 依赖集中注入而不是用全局变量，是为了让每个 handler 都可以独立构造、单测；
+// cfg 目前无人消费，等 handler 真正需要配置时再加，避免"看似已注入"的错觉。
 type server struct {
-	cfg  config.Config
 	pool *pgxpool.Pool
 }
 

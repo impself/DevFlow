@@ -8,6 +8,12 @@ import os
 
 from fastapi import FastAPI
 
+# 兜底日志配置：uvicorn 默认不接管业务 logger，
+# 没有 handler 时 INFO 级日志会被静默吞掉（Python 兜底只放行 WARNING+）。
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 logger = logging.getLogger("devflow.runtime")
 
 app = FastAPI(

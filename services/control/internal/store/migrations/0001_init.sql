@@ -99,6 +99,9 @@ CREATE TABLE runs (
 );
 CREATE INDEX runs_claimable_idx ON runs (created_at)
     WHERE status IN ('QUEUED', 'RECOVERING');
+-- 清道夫索引：ExpireStaleRuns 扫「RUNNING 且租约已过期」，没有它 runs 上量后变全表扫
+CREATE INDEX runs_running_lease_idx ON runs (lease_expires_at)
+    WHERE status = 'RUNNING';
 CREATE INDEX runs_case_idx ON runs (case_id);
 
 -- ===== 原子提交回执（协议表，AC23–AC26） =====

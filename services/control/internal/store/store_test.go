@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -16,7 +17,11 @@ func TestWithTx(t *testing.T) {
 	// 避免「上一个子测试的残留让下一个子测试 seed 撞主键」。
 	seedRepo := func(t *testing.T) {
 		t.Helper()
-		t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM cases WHERE id LIKE 'c-tx-%'`) })
+		t.Cleanup(func() {
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM cases WHERE id LIKE 'c-tx-%'`); err != nil {
+				t.Errorf("清理 case 夹具: %v", err)
+			}
+		})
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO repositories (id, repo_numeric_id, owner, name, default_branch, installation_id, policy_version)
 			VALUES ('r-tx', 43, 'o', 'n', 'main', 7, 'v1')
@@ -24,7 +29,13 @@ func TestWithTx(t *testing.T) {
 			t.Fatalf("seed repository: %v", err)
 		}
 	}
-	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM repositories WHERE id='r-tx'`) })
+	t.Cleanup(func() {
+		// WithoutCancel：父测试级 cleanup 执行时 ctx 已被 t.Context() 取消，
+		// 直接用会静默失败留下残留行（review P1-1 实证过）。
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM repositories WHERE id='r-tx'`); err != nil {
+			t.Errorf("清理 repository 夹具: %v", err)
+		}
+	})
 
 	t.Run("fn 成功则提交", func(t *testing.T) {
 		seedRepo(t)

@@ -29,7 +29,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 // TestMigrateIdempotent 是迁移的核心验收：连跑两遍不炸、表齐全。
 func TestMigrateIdempotent(t *testing.T) {
 	pool := testPool(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if err := Migrate(ctx, pool); err != nil {
 		t.Fatalf("第一遍迁移: %v", err)
@@ -62,7 +62,9 @@ func TestSchemaConstraints(t *testing.T) {
 
 	t.Run("delivery_id 唯一（AC45 投递去重）", func(t *testing.T) {
 		t.Cleanup(func() {
-			pool.Exec(ctx, `DELETE FROM inbox_events WHERE id IN ('ev1','ev2')`)
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM inbox_events WHERE id IN ('ev1','ev2')`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
 		})
 		ins := `INSERT INTO inbox_events (id, delivery_id, event_type, payload, signature_valid)
 		        VALUES ($1,$2,'issues','{}',true)`
@@ -77,11 +79,21 @@ func TestSchemaConstraints(t *testing.T) {
 	t.Run("model_calls 费用不得记零（AC47）", func(t *testing.T) {
 		// 借一条合法 run 作外键锚（用例结束后按依赖逆序清理，不污染协议测试）
 		t.Cleanup(func() {
-			pool.Exec(ctx, `DELETE FROM model_calls WHERE id IN ('mc-zero','mc-ok')`)
-			pool.Exec(ctx, `DELETE FROM runs WHERE id='run1'`)
-			pool.Exec(ctx, `DELETE FROM inbox_events WHERE id='ev-r1'`)
-			pool.Exec(ctx, `DELETE FROM cases WHERE id='c1'`)
-			pool.Exec(ctx, `DELETE FROM repositories WHERE id='r1'`)
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM model_calls WHERE id IN ('mc-zero','mc-ok')`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM runs WHERE id='run1'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM inbox_events WHERE id='ev-r1'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM cases WHERE id='c1'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM repositories WHERE id='r1'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
 		})
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO repositories (id, repo_numeric_id, owner, name, default_branch, installation_id, policy_version)
@@ -137,10 +149,18 @@ func TestSchemaConstraints(t *testing.T) {
 			t.Fatalf("插入 run: %v", err)
 		}
 		t.Cleanup(func() {
-			pool.Exec(ctx, `DELETE FROM runs WHERE id='run2'`)
-			pool.Exec(ctx, `DELETE FROM inbox_events WHERE id='ev-r2'`)
-			pool.Exec(ctx, `DELETE FROM cases WHERE id='c2'`)
-			pool.Exec(ctx, `DELETE FROM repositories WHERE id='r2'`)
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM runs WHERE id='run2'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM inbox_events WHERE id='ev-r2'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM cases WHERE id='c2'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
+			if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM repositories WHERE id='r2'`); err != nil {
+				t.Errorf("清理夹具: %v", err)
+			}
 		})
 
 		_, err := pool.Exec(ctx,

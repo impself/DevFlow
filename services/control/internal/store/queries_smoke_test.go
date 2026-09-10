@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,7 +15,7 @@ import (
 func setupQueries(t *testing.T) (*pgxpool.Pool, *db.Queries, context.Context) {
 	t.Helper()
 	pool := testPool(t)
-	ctx := context.Background()
+	ctx := t.Context() // 测试结束时自动取消，泄露的查询会被及时掐断
 	if err := Migrate(ctx, pool); err != nil {
 		t.Fatalf("迁移: %v", err)
 	}
@@ -35,8 +36,9 @@ func TestClaimSmoke(t *testing.T) {
 	pool, q, ctx := setupQueries(t)
 
 	owner := "worker-1"
-	if _, err := q.ClaimRun(ctx, &owner); err == nil {
-		t.Fatal("空库领取竟返回了行")
+	// 断言 ErrNoRows 而不是 err == nil：连接故障也返回 error，不能让测试假绿
+	if _, err := q.ClaimRun(ctx, &owner); !errors.Is(err, ErrNoRows) {
+		t.Fatalf("空库领取应返回 ErrNoRows，得到 %v", err)
 	}
 
 	if _, err := pool.Exec(ctx, `
@@ -69,7 +71,7 @@ func TestClaimSmoke(t *testing.T) {
 		t.Fatalf("领取结果异常: id=%s epoch=%d（期望 run-x/1）", claimed.ID, claimed.LeaseEpoch)
 	}
 
-	if _, err := q.ClaimRun(ctx, &owner); err == nil {
-		t.Fatal("领取后再次领取竟还有行（QUEUED 未被消费）")
+	if _, err := q.ClaimRun(ctx, &owner); !errors.Is(err, ErrNoRows) {
+		t.Fatalf("领取后再次领取应 ErrNoRows（QUEUED 未被消费），得到 %v", err)
 	}
 }
