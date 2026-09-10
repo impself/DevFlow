@@ -12,7 +12,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - devflow_pgdata:/var/lib/postgresql/data
+      # postgres 18+ 镜像要求数据挂载在 /var/lib/postgresql（数据在带版本号的子目录，
+      # 便于 pg_upgrade）；旧写法 /var/lib/postgresql/data 会导致容器启动即退出。
+      - devflow_pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U devflow -d devflow"]
       interval: 5s
