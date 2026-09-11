@@ -25,3 +25,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T013 | [T013-lease-protocol.md](./T013-lease-protocol.md) | 提交回执协议：幂等键+内容哈希、fencing 回滚、合作式取消（面试考点） |
 | T014 | [T014-execute-flow.md](./T014-execute-flow.md) | 执行流：合同复验信任边界、确定性幂等键、固定快照+SHA、预算三层护栏 |
 | T015 | [T015-python-contract-mirror.md](./T015-python-contract-mirror.md) | 跨语言合同：Pydantic 镜像、双向校验抓 null/缺省漂移（agent 工程考点） |
+| T016 | [T016-issue-agent.md](./T016-issue-agent.md) | Issue Agent：结构化输出四层防线、重试预算、显式降级、行号注入（核心 agent 考点） |
