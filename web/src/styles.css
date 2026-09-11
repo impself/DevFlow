@@ -1,0 +1,14 @@
+/* M1 极简样式：无组件库，只保证可读 */
+body { margin: 0; color: #111827; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #e5e7eb; padding: 0.4rem 0.6rem; text-align: left; font-size: 0.9rem; }
+.badge { color: #fff; border-radius: 999px; padding: 0.1rem 0.6rem; font-size: 0.75rem; }
+.muted { color: #6b7280; }
+.err { color: #dc2626; }
+.ok { color: #16a34a; }
+blockquote { border-left: 3px solid #d1d5db; margin: 0.3rem 0; padding-left: 0.7rem; color: #374151; }
+code { background: #f3f4f6; padding: 0 0.3rem; border-radius: 3px; font-size: 0.85em; }
+pre { background: #f9fafb; padding: 0.8rem; overflow-x: auto; font-size: 0.8rem; }
+form { display: flex; flex-direction: column; gap: 0.6rem; max-width: 360px; }
+form label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; }
+input { padding: 0.35rem 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; }
