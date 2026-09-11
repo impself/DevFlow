@@ -34,6 +34,27 @@ func (q *Queries) GetCurrentDraftForCase(ctx context.Context, caseID string) (Re
 	return i, err
 }
 
+const getReplyDraft = `-- name: GetReplyDraft :one
+SELECT id, run_id, artifact_id, conclusion, body_digest, evidence, needs_info_questions, status, created_at FROM reply_drafts WHERE id = $1
+`
+
+func (q *Queries) GetReplyDraft(ctx context.Context, id string) (ReplyDraft, error) {
+	row := q.db.QueryRow(ctx, getReplyDraft, id)
+	var i ReplyDraft
+	err := row.Scan(
+		&i.ID,
+		&i.RunID,
+		&i.ArtifactID,
+		&i.Conclusion,
+		&i.BodyDigest,
+		&i.Evidence,
+		&i.NeedsInfoQuestions,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertReplyDraft = `-- name: InsertReplyDraft :exec
 
 INSERT INTO reply_drafts (id, run_id, artifact_id, conclusion, body_digest, evidence, needs_info_questions)

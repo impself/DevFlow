@@ -17,6 +17,9 @@ WHERE status = 'current'
     WHERE ru.case_id = $1
   );
 
+-- name: GetReplyDraft :one
+SELECT * FROM reply_drafts WHERE id = $1;
+
 -- name: GetCurrentDraftForCase :one
 SELECT r.* FROM reply_drafts r
 JOIN runs ru ON r.run_id = ru.id

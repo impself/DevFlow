@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -93,16 +94,21 @@ func Reset(t *testing.T, pool *pgxpool.Pool) {
 	}
 }
 
+// seedCounter 让 ID/编号保持现实量级（GitHub 数字 ID 远小于 2^53），
+// 避免测试用纳秒时间戳制造出 JS float64 精度丢失才暴露的假问题。
+var seedCounter atomic.Int64
+
 // SeedRun 造一条可直接领取的 QUEUED run（仓库/case/事件/run 全套），
 // 返回 run id。tag 用于日志可读区分。
 func SeedRun(t *testing.T, pool *pgxpool.Pool, tag string) string {
 	t.Helper()
 	ctx := t.Context()
-	suffix := fmt.Sprintf("%s-%d", tag, time.Now().UnixNano())
+	n := seedCounter.Add(1)
+	suffix := fmt.Sprintf("%s-%d", tag, n)
 
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO repositories (id, repo_numeric_id, owner, name, default_branch, installation_id, policy_version)
-		VALUES ($1, $2, 'o', $1, 'main', 7, 'v1')`, "repo-"+suffix, time.Now().UnixNano()); err != nil {
+		VALUES ($1, $2, 'o', $1, 'main', 7, 'v1')`, "repo-"+suffix, 1000+n); err != nil {
 		t.Fatalf("seed repository: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
@@ -112,7 +118,7 @@ func SeedRun(t *testing.T, pool *pgxpool.Pool, tag string) string {
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO cases (id, repo_id, issue_number, issue_id, title)
-		VALUES ($1, $2, 1, $3, 't')`, "case-"+suffix, "repo-"+suffix, time.Now().UnixNano()); err != nil {
+		VALUES ($1, $2, 1, $3, 't')`, "case-"+suffix, "repo-"+suffix, 100000+n); err != nil {
 		t.Fatalf("seed case: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
