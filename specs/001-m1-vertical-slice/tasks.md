@@ -103,10 +103,10 @@
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T030 [P] 部署与启动文档：完善 `infra/.env.example` 与 `infra/README.md`（本地 PG 或 Docker、cloudflared/smee 隧道、GitHub App 注册步骤与最小权限清单）
-- [ ] T031 [P] 文档路径修复：`docs/AliGo 架构学习与 DevFlow 映射.md` 内指向旧 `调研/` 目录的链接改为仓库内 `docs/` 相对路径
+- [x] T030 [P] 部署与启动文档：完善 `infra/.env.example` 与 `infra/README.md`（本地 PG 或 Docker、cloudflared/smee 隧道、GitHub App 注册步骤与最小权限清单）
+- [x] T031 [P] 文档路径修复：`docs/AliGo 架构学习与 DevFlow 映射.md` 内指向旧 `调研/` 目录的链接改为仓库内 `docs/` 相对路径
 - [ ] T032 quickstart 全量回归：按 `specs/001-m1-vertical-slice/quickstart.md` 场景 A~F 逐项取证，填写验证记录（含截图/SQL 证据位置），AC 证据对照表闭环
-- [ ] T033 宪法合规自查：对照宪法 I~VIII 红线过一遍代码与配置（无合并入口、审批绑定、凭据隔离、schema 校验、预算参数与 PRD §21.5 一致），结果记入验证记录
+- [x] T033 宪法合规自查：对照宪法 I~VIII 红线过一遍代码与配置（无合并入口、审批绑定、凭据隔离、schema 校验、预算参数与 PRD §21.5 一致），结果记入验证记录
 
 ---
 

@@ -23,7 +23,7 @@ AliGo 使用 Python / AgentScope 承担规划、记忆与模型调用，Java 承
 | 人工审批 | Go ApprovalBundle / Action / Publisher | Issue 回复、Review COMMENT、分支和 Draft PR 发布绑定获准内容与补丁版本；结果不明先核对；不自动合并 |
 | 可观测性 | AgentScope / Go OpenTelemetry + Langfuse | 传播 Trace 上下文；持久状态事件与调试 Trace 分开 |
 
-混合分层不要求每次模型调用都跨语言往返。Go 下发一次有边界的 Run，Python 在其中完成 Agent 协作；检查点、业务事件和受限工具请求才经过 Go。任务、Runner、补丁验证、审批与发布协议详见 [完整 PRD V3.0](<D:/desktop/jobs/projects/调研/DevFlow 完整 PRD.md>)，概览见 [核心技术架构 PRD](<D:/desktop/jobs/projects/调研/DevFlow 核心技术架构 PRD.md>)。
+混合分层不要求每次模型调用都跨语言往返。Go 下发一次有边界的 Run，Python 在其中完成 Agent 协作；检查点、业务事件和受限工具请求才经过 Go。任务、Runner、补丁验证、审批与发布协议详见 [完整 PRD V3.0](./DevFlow%20完整%20PRD.md)，概览见 [核心技术架构 PRD](./DevFlow%20核心技术架构%20PRD.md)。
 
 ## 3. 框架能力与项目自研边界
 
