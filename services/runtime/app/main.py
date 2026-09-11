@@ -8,6 +8,8 @@ import os
 
 from fastapi import FastAPI
 
+from app.api import router
+
 # 兜底日志配置：uvicorn 默认不接管业务 logger，
 # 没有 handler 时 INFO 级日志会被静默吞掉（Python 兜底只放行 WARNING+）。
 logging.basicConfig(
@@ -21,6 +23,7 @@ app = FastAPI(
     version="0.1.0",
     description="Issue 分析智能层（AgentScope 2.0），仅接受控制层内部调用",
 )
+app.include_router(router)
 
 
 @app.get("/healthz")

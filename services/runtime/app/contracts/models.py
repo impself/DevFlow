@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 
 class Outcome(str, Enum):
@@ -62,12 +62,16 @@ class IssueAgentOutput(BaseModel):
     degraded: bool = False
     usage: Usage
 
-    def model_dump_json(self, **kwargs: object) -> str:
+    @model_serializer
+    def _serialize_without_none(self) -> dict[str, Any]:
         """可选字段（reply/evidence/questions）为 None 时必须「缺省」而不是 null——
         schema 未定义 nullable，null 会过不了 Go 侧复验。
-        统一在序列化出口排除 None，调用方无需记住 exclude_none。"""
-        kwargs.setdefault("exclude_none", True)
-        return super().model_dump_json(**kwargs)  # type: ignore[return-value]
+
+        用 model_serializer 钩子（对 model_dump / model_dump_json /
+        FastAPI response_model 三条序列化路径都生效），
+        而不是要求每个调用方记得 exclude_none——容易被忘记的约定要变成结构保证。
+        """
+        return {k: v for k, v in self.__dict__.items() if v is not None}
 
     @model_validator(mode="after")
     def _check_conditional_rules(self) -> "IssueAgentOutput":
