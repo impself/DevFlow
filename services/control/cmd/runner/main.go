@@ -70,7 +70,8 @@ func run() error {
 	analyzer := runtimeclient.New(cfg.RuntimeURL, cfg.InternalToken, 5*time.Minute)
 
 	owner := fmt.Sprintf("runner-%d", os.Getpid())
-	executor := controller.NewRunExecutor(st, github.NewContents(ghFactory), analyzer, owner)
+	artifacts := controller.NewArtifactStore(st, cfg.ArtifactDir)
+	executor := controller.NewRunExecutor(st, github.NewContents(ghFactory), analyzer, owner, artifacts)
 	worker := controller.NewWorker(st, owner, executor.Execute)
 
 	errCh := make(chan error, 2)

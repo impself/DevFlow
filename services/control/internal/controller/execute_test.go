@@ -59,7 +59,7 @@ const analyzerAnswerReady = `{
 }`
 
 // executeFixture 迁移清场 + 种 run + 领取，返回执行所需的全部件。
-func executeFixture(t *testing.T) (*store.Store, controller.Claim, *fakeContents) {
+func executeFixture(t *testing.T) (*store.Store, controller.Claim, *fakeContents, *controller.ArtifactStore, string) {
 	pool, dbURL := testutil.NewPool(t)
 	testutil.Migrate(t, pool)
 	testutil.Reset(t, pool)
@@ -76,19 +76,20 @@ func executeFixture(t *testing.T) (*store.Store, controller.Claim, *fakeContents
 	if err != nil {
 		t.Fatalf("领取: %v", err)
 	}
+	dir := t.TempDir()
 	return st, claim, &fakeContents{
 		head: "fixed0sha",
 		files: map[string]*github.FileContent{
 			"README.md": {Path: "README.md", SHA: "deadbee", Size: 11, Content: []byte("pages at 0")},
 		},
-	}
+	}, controller.NewArtifactStore(st, dir), dir
 }
 
 func TestExecute(t *testing.T) {
 	t.Run("ANSWER_READY 全流程：合同校验+费用记录+原子提交", func(t *testing.T) {
-		st, claim, contents := executeFixture(t)
+		st, claim, contents, artifacts, _ := executeFixture(t)
 		analyzer := &fakeAnalyzer{resp: []byte(strings.Replace(analyzerAnswerReady, "__RUN__", claim.ID, 1))}
-		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec")
+		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec", artifacts)
 
 		outcome, err := exec.Execute(t.Context(), claim)
 		if err != nil {
@@ -124,11 +125,11 @@ func TestExecute(t *testing.T) {
 	})
 
 	t.Run("智能层响应违反合同：执行失败且不落终态", func(t *testing.T) {
-		st, claim, contents := executeFixture(t)
+		st, claim, contents, artifacts, _ := executeFixture(t)
 		// ANSWER_READY 缺 reply_markdown → schema 拒绝
 		bad := strings.Replace(`{"run_id":"__RUN__","outcome":"ANSWER_READY","evidence":[{"source_type":"doc_file","location":{"path":"README.md","sha":"deadbee"}}],"usage":{"model":"m","input_tokens":1,"output_tokens":1,"cost_cny":0.01,"cost_status":"estimated"}}`, "__RUN__", claim.ID, 1)
 		analyzer := &fakeAnalyzer{resp: []byte(bad)}
-		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec")
+		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec", artifacts)
 
 		if _, err := exec.Execute(t.Context(), claim); err == nil {
 			t.Fatal("违反合同的响应应导致执行失败")
@@ -141,9 +142,9 @@ func TestExecute(t *testing.T) {
 	})
 
 	t.Run("智能层不可用：错误上抛交给 worker 重试路径", func(t *testing.T) {
-		st, claim, contents := executeFixture(t)
+		st, claim, contents, artifacts, _ := executeFixture(t)
 		analyzer := &fakeAnalyzer{err: runtimeclient.ErrUnavailable}
-		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec")
+		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec", artifacts)
 
 		if _, err := exec.Execute(t.Context(), claim); !errors.Is(err, runtimeclient.ErrUnavailable) {
 			t.Fatalf("应上抛 ErrUnavailable，得到 %v", err)
@@ -151,13 +152,13 @@ func TestExecute(t *testing.T) {
 	})
 
 	t.Run("预算耗尽：LIMIT_REACHED 且不调智能层", func(t *testing.T) {
-		st, claim, contents := executeFixture(t)
+		st, claim, contents, artifacts, _ := executeFixture(t)
 		if _, err := st.Pool().Exec(t.Context(),
 			`UPDATE runs SET model_calls_used = max_model_calls WHERE id=$1`, claim.ID); err != nil {
 			t.Fatalf("耗尽预算: %v", err)
 		}
 		analyzer := &fakeAnalyzer{resp: []byte(`{}`)}
-		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec")
+		exec := controller.NewRunExecutor(st, contents, analyzer, "worker-exec", artifacts)
 
 		outcome, err := exec.Execute(t.Context(), claim)
 		if err != nil || outcome != "LIMIT_REACHED" {

@@ -40,14 +40,16 @@ type Analyzer interface {
 
 // RunExecutor 编排一次 run 的执行。
 type RunExecutor struct {
-	st       *store.Store
-	contents github.RepoContentProvider
-	analyzer Analyzer
-	owner    string // 与 worker 相同的租约身份，提交时用于 epoch 校验
+	st        *store.Store
+	contents  github.RepoContentProvider
+	analyzer  Analyzer
+	owner     string // 与 worker 相同的租约身份，提交时用于 epoch 校验
+	artifacts *ArtifactStore
 }
 
-func NewRunExecutor(st *store.Store, contents github.RepoContentProvider, analyzer Analyzer, owner string) *RunExecutor {
-	return &RunExecutor{st: st, contents: contents, analyzer: analyzer, owner: owner}
+func NewRunExecutor(st *store.Store, contents github.RepoContentProvider, analyzer Analyzer,
+	owner string, artifacts *ArtifactStore) *RunExecutor {
+	return &RunExecutor{st: st, contents: contents, analyzer: analyzer, owner: owner, artifacts: artifacts}
 }
 
 // issueSnapshot 是 webhook 写入 input_snapshot 的结构镜像（T011）。
@@ -136,6 +138,15 @@ func (e *RunExecutor) Execute(ctx context.Context, claim Claim) (string, error) 
 
 	// 7. 记费用（FR-10/AC47）：失败只记日志，不因记账失败毁掉一次成功的分析
 	e.recordUsage(ctx, claim.ID, out.Usage)
+
+	// 7.5 产物落库（草稿/证据/原始输出）：失败只记日志——产物缺席时
+	// run_commits.result 里仍有完整 JSON（取证兜底），不值得因此毁掉一次成功分析。
+	// 落库失败的草稿不会进入审批流（case 查不到 current 草稿）。
+	if e.artifacts != nil {
+		if err := e.artifacts.SaveDraft(ctx, claim.ID, claim.CaseID, &out, raw); err != nil {
+			slog.Error("产物落库失败", "run", claim.ID, "err", err)
+		}
+	}
 
 	// 8. 原子提交（AC23–26）：回执 + 终态同事务
 	if err := e.commit(ctx, claim, out.Outcome, raw); err != nil {

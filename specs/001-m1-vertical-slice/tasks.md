@@ -62,7 +62,7 @@
 - [x] T015 [P] [US1] Python 合同镜像：`services/runtime/app/contracts/models.py`（Pydantic 模型严格镜像 `contracts/schemas/issue-agent-output.schema.json`，含条件校验：ANSWER_READY 必须有 reply+evidence、degraded 不得 ANSWER_READY）+ `tests/contract/test_issue_agent_output.py`（用 jsonschema 库对示例与 schema 双向校验）
 - [x] T016 [US1] Issue Agent：`services/runtime/app/agents/issue_agent.py`——AgentScope 2.0 `Agent` + `DashScopeChatModel(model="qwen-plus")` + `structured_schema` 结构化输出；`structured_output is None`（EXCEED_MAX_ITERS）与校验失败处理：重试 1–2 次 → 降级 NEEDS_INFO（degraded=true）；usage（tokens + cost estimated）回传
 - [x] T017 [US1] 分析端点：`services/runtime/app/api.py`——`POST /internal/v1/issue-analysis`（鉴权中间件、超时控制、异常 → 503 让 Runner 走重试）
-- [ ] T018 [US1] 产物落库：`internal/controller/artifacts.go`——草稿正文写 content-addressable 文件（sha256 命名）+ artifacts 表引用；reply_drafts（evidence jsonb、body_digest、status=current，旧草稿标 superseded）
+- [x] T018 [US1] 产物落库：`internal/controller/artifacts.go`——草稿正文写 content-addressable 文件（sha256 命名）+ artifacts 表引用；reply_drafts（evidence jsonb、body_digest、status=current，旧草稿标 superseded）
 - [ ] T019 [P] [US1] 租约与幂等集成测试：`tests/control/lease_test.go`（go test + 真实 PG：并发领取互斥、心跳续租、过期租约被接管、旧 epoch 提交被拒、同 commit_id 幂等回执、同 ID 不同 payload_hash 冲突——AC23/24/25/26）
 
 **Checkpoint**: quickstart 场景 A/C/D 通过——真实 Issue 生成带引用草稿、GitHub 零写入、NEEDS_INFO ≤3 问、重复投递不重复建 Run
