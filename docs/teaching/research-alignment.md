@@ -70,9 +70,9 @@ UPDATE ... WHERE id = (SELECT id ... FOR UPDATE SKIP LOCKED LIMIT 1)
 | --- | --- | --- | --- |
 | 1 | commits 插入的 epoch 守卫 | 调研标记必须修 | **无需修**：CommitRunResult 单事务里 CompleteRun 0 行即回滚回执（T013 测试实证 receiptCount=0），原子性已覆盖 |
 | 2 | webhook delivery 去重 | 必须修 | **已有**：delivery_id 唯一索引 + ON CONFLICT（T011 测试覆盖） |
-| 3 | Sweeper/心跳守卫完整性 | 必须修 | 部分：Sweeper WHERE 已带状态+时间；**待做**：心跳 WHERE 补 `status='RUNNING'`（防 reaper 翻转后迟到心跳复活） |
+| 3 | Sweeper/心跳守卫完整性 | 必须修 | **已落地**：心跳 WHERE 补 `status='RUNNING'`，测试 TestHeartbeatStatusGuard 验证迟到心跳不复活 |
 | 4 | 失败不占 commit_id | 必须修 | **已满足**（设计即如此） |
-| 5 | 领取排序补 id 决胜 | 建议 | 待做 |
-| 6 | 毒 run 重试预算（attempts/max） | 建议 | 待做（防崩溃循环） |
+| 5 | 领取排序补 id 决胜 | 建议 | **已落地**（0002 迁移） |
+| 6 | 毒 run 重试预算（attempts/max） | 建议 | **已落地**（0002 迁移 + 清道夫终结，测试 TestRetryBudget） |
 | 7 | 心跳 churn 治理（UNLOGGED 副表） | 建议 | 量级未到，记为已知权衡 |
 | 8 | 核对键限定 [bot] 账号 | 建议 | **已落地**（T024 review 修复） |

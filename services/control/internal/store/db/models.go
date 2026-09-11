@@ -135,6 +135,8 @@ type Run struct {
 	CreatedAt      pgtype.Timestamptz
 	StartedAt      pgtype.Timestamptz
 	FinishedAt     pgtype.Timestamptz
+	Attempts       int32
+	MaxAttempts    int32
 }
 
 type RunCommit struct {

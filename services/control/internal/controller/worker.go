@@ -210,7 +210,11 @@ func (w *Worker) heartbeatLoop(ctx context.Context, cancel context.CancelFunc, c
 	}
 }
 
-// Sweeper 周期把租约过期的 RUNNING 翻成 RECOVERING（场景 E 的恢复起点）。
+// Sweeper 周期做两件事（顺序固定）：
+//  1. 租约过期的 RUNNING → RECOVERING（场景 E 的恢复起点）；
+//  2. 预算耗尽（attempts ≥ max）的 RECOVERING → FAILED（毒 run 终结，
+//     调研改进 #6：epoch 只防双主，不防崩溃循环——预算才是循环的终止条件）。
+//
 // 与 Worker 分离：清道夫不需要知道谁在干活，只对状态负责。
 func Sweeper(ctx context.Context, st *store.Store) error {
 	ticker := time.NewTicker(sweepEvery)
@@ -230,6 +234,11 @@ func Sweeper(ctx context.Context, st *store.Store) error {
 			}
 			if rows > 0 {
 				slog.Warn("发现租约过期的 run，标记 RECOVERING", "count", rows)
+			}
+			if rows, err := st.FailExhaustedRuns(ctx); err != nil {
+				slog.Error("毒 run 终结扫描失败", "err", err)
+			} else if rows > 0 {
+				slog.Warn("重试预算耗尽的 run，标记 FAILED", "count", rows)
 			}
 		}
 	}
