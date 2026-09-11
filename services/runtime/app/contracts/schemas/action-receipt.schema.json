@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devflow.local/contracts/schemas/action-receipt.schema.json",
+  "title": "ActionReceipt",
+  "description": "外部动作执行/核对的回执合同（PRD §15.5-15.7）。响应丢失时进入 RECONCILING：按目标、身份与内容核对远端，不得盲目重发第二条（AC36）；不确定时 UNCERTAIN 转人工。",
+  "type": "object",
+  "required": ["action_id", "bundle_id", "status", "checked_at"],
+  "properties": {
+    "action_id": { "type": "string" },
+    "bundle_id": { "type": "string" },
+    "status": { "enum": ["SUCCEEDED", "FAILED", "UNCERTAIN"] },
+    "remote_comment_id": { "type": "integer", "description": "GitHub 返回的评论 ID；核对锚点" },
+    "remote_url": { "type": "string", "format": "uri" },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "note": { "type": "string", "description": "FAILED/UNCERTAIN 时的人类可读原因" }
+  },
+  "examples": [
+    {
+      "action_id": "act_01J8Z5EXAMPLE",
+      "bundle_id": "bdl_01J8Z2EXAMPLE",
+      "status": "SUCCEEDED",
+      "remote_comment_id": 2888112233,
+      "remote_url": "https://github.com/impself/devflow-fixture/issues/12#issuecomment-2888112233",
+      "checked_at": "2026-09-01T09:05:00Z"
+    }
+  ]
+}

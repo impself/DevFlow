@@ -86,6 +86,8 @@ func bundleJSON(b db.ApprovalBundle) gin.H {
 	}
 	return gin.H{
 		"id":             b.ID,
+		"case_id":        b.CaseID,
+		"draft_id":       b.DraftID,
 		"status":         b.Status,
 		"action_type":    b.ActionType,
 		"target":         json.RawMessage(b.Target),

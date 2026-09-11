@@ -33,3 +33,4 @@ M1 主线竖切逐任务教学笔记 + [架构×业界对照表](./research-alig
 | T021 | [T021-approval-endpoints.md](./T021-approval-endpoints.md) | 批准/拒绝端点：薄 handler、三 AC 会师、中间件泛化时机 |
 | T022-024 | [T022-024-publisher-chain.md](./T022-024-publisher-chain.md) | 发布链：错误分类学、恢复语义、reconciliation（面试重点） |
 | 硬化 | [hardening-agent-safety.md](./hardening-agent-safety.md) | 调研驱动硬化：sender.type 防循环、引用逐字门、毒 run 预算（面试高价值） |
+| T025 | tests/contract/test_approval_bundle.py | 审批合同测试：12 用例，抓到 Go 侧缺 case_id/draft_id 的形状缺口 |
