@@ -59,7 +59,7 @@
 - [x] T012 [US1] 事件过滤与业务去重：`internal/controller/events.go`——只处理 issues opened/reopened；范围外仓库记 ignored；自评论（bot 自己的 comment）去重防循环（AC45）
 - [x] T013 [US1] 租约协议：`internal/controller/lease.go`——claim_run（SKIP LOCKED 领取 + epoch+1 + 30s 租约）、heartbeat（0 行受影响即失权）、提交时校验 lease_epoch（旧 epoch 拒绝，AC24）、取消检查
 - [x] T014 [US1] Run 执行流：`internal/controller/execute.go`——领取后预取固定 head SHA 的 README/相关文件（go-github Contents API，≤N 文件大小上限）→ 组装 issue-analysis 请求调 Python → 成功后构造 `commit_id + payload_hash` 原子提交（`ON CONFLICT` 幂等回执，AC25/26）→ 更新 Run 终态与 outcome
-- [ ] T015 [P] [US1] Python 合同镜像：`services/runtime/app/contracts/models.py`（Pydantic 模型严格镜像 `contracts/schemas/issue-agent-output.schema.json`，含条件校验：ANSWER_READY 必须有 reply+evidence、degraded 不得 ANSWER_READY）+ `tests/contract/test_issue_agent_output.py`（用 jsonschema 库对示例与 schema 双向校验）
+- [x] T015 [P] [US1] Python 合同镜像：`services/runtime/app/contracts/models.py`（Pydantic 模型严格镜像 `contracts/schemas/issue-agent-output.schema.json`，含条件校验：ANSWER_READY 必须有 reply+evidence、degraded 不得 ANSWER_READY）+ `tests/contract/test_issue_agent_output.py`（用 jsonschema 库对示例与 schema 双向校验）
 - [ ] T016 [US1] Issue Agent：`services/runtime/app/agents/issue_agent.py`——AgentScope 2.0 `Agent` + `DashScopeChatModel(model="qwen-plus")` + `structured_schema` 结构化输出；`structured_output is None`（EXCEED_MAX_ITERS）与校验失败处理：重试 1–2 次 → 降级 NEEDS_INFO（degraded=true）；usage（tokens + cost estimated）回传
 - [ ] T017 [US1] 分析端点：`services/runtime/app/api.py`——`POST /internal/v1/issue-analysis`（鉴权中间件、超时控制、异常 → 503 让 Runner 走重试）
 - [ ] T018 [US1] 产物落库：`internal/controller/artifacts.go`——草稿正文写 content-addressable 文件（sha256 命名）+ artifacts 表引用；reply_drafts（evidence jsonb、body_digest、status=current，旧草稿标 superseded）

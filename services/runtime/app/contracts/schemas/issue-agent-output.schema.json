@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devflow.local/contracts/schemas/issue-agent-output.schema.json",
+  "title": "IssueAgentOutput",
+  "description": "Python 智能层（Issue Agent）返回给 Go Runner 的结构化结果。智能层内部已做 Pydantic 校验与降级；Go 侧收到后必须再次按本 schema 校验（合同优先，PRD §28.2）。",
+  "type": "object",
+  "required": ["run_id", "outcome", "usage"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "outcome": {
+      "enum": ["ANSWER_READY", "NEEDS_INFO", "UNRESOLVED"],
+      "description": "ANSWER_READY 时 reply_markdown 与 evidence 必填；NEEDS_INFO 时 needs_info_questions 必填（1-3 条）。"
+    },
+    "reply_markdown": {
+      "type": "string",
+      "description": "对外评论草稿正文（Markdown）。未批准前只是内部 Artifact，绝不直接发布（宪法 II）。"
+    },
+    "evidence": {
+      "type": "array",
+      "description": "证据引用列表，每条必须能在固定 SHA 上核对（AC03）。",
+      "items": {
+        "type": "object",
+        "required": ["source_type", "location"],
+        "properties": {
+          "source_type": { "enum": ["doc_file", "code_file"] },
+          "location": {
+            "type": "object",
+            "required": ["path", "sha"],
+            "properties": {
+              "path": { "type": "string" },
+              "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+              "line_start": { "type": "integer", "minimum": 1 },
+              "line_end": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "quote": { "type": "string", "description": "支撑该引用的原文摘录" }
+        }
+      }
+    },
+    "needs_info_questions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 3,
+      "description": "至多 3 个追问（AC04）。"
+    },
+    "degraded": {
+      "type": "boolean",
+      "default": false,
+      "description": "true 表示结构化输出未通过校验而降级（此时 outcome 不得为 ANSWER_READY）。"
+    },
+    "usage": {
+      "type": "object",
+      "required": ["model", "input_tokens", "output_tokens", "cost_cny", "cost_status"],
+      "description": "费用记录来源；cost_status 超时未确认必须为 estimated，不得记零（AC47）。",
+      "properties": {
+        "model": { "type": "string", "examples": ["qwen-plus"] },
+        "input_tokens": { "type": "integer", "minimum": 0 },
+        "output_tokens": { "type": "integer", "minimum": 0 },
+        "cost_cny": { "type": "number", "minimum": 0 },
+        "cost_status": { "enum": ["estimated", "confirmed"] }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "outcome": { "const": "ANSWER_READY" } } },
+      "then": {
+        "required": ["reply_markdown", "evidence"],
+        "properties": {
+          "evidence": { "minItems": 1 },
+          "degraded": { "const": false }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "outcome": { "const": "NEEDS_INFO" } } },
+      "then": { "required": ["needs_info_questions"], "properties": { "needs_info_questions": { "minItems": 1 } } }
+    },
+    {
+      "if": { "properties": { "degraded": { "const": true } } },
+      "then": { "properties": { "outcome": { "enum": ["NEEDS_INFO", "UNRESOLVED"] } } }
+    }
+  ],
+  "examples": [
+    {
+      "run_id": "run_01J8Z0EXAMPLE",
+      "outcome": "ANSWER_READY",
+      "reply_markdown": "分页参数 `page` 从 0 开始，见 `tasklist/pagination.py` 的实现……",
+      "evidence": [
+        {
+          "source_type": "code_file",
+          "location": { "path": "tasklist/pagination.py", "sha": "3f2a1bc", "line_start": 12, "line_end": 18 },
+          "quote": "DEFAULT_PAGE = 0"
+        }
+      ],
+      "degraded": false,
+      "usage": { "model": "qwen-plus", "input_tokens": 3200, "output_tokens": 450, "cost_cny": 0.012, "cost_status": "estimated" }
+    }
+  ]
+}
