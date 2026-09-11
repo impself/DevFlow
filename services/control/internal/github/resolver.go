@@ -94,3 +94,48 @@ func (g *ghOps) CreateComment(ctx context.Context, number int64, body string) (i
 	}
 	return c.GetID(), c.GetHTMLURL(), nil
 }
+
+// ---- 能力检查 shim（T026 接入用）----
+
+// CapabilityProber 是仓库接入（onboarding）需要的能力探针面。
+// 与 publisher.ClientResolver 分开：两者的消费者关心不同的最小接口。
+type CapabilityProber interface {
+	GetRepo(ctx context.Context, installationID int64, owner, name string) (*RepoSummary, error)
+	ListIssues(ctx context.Context, installationID int64, owner, name string, limit int) ([]int64, error)
+}
+
+// RepoSummary 是能力探针需要的仓库摘要。
+type RepoSummary struct {
+	DefaultBranch string
+}
+
+// GetRepo 读取仓库基本信息（metadata/contents 读能力的实测）。
+func (r *PublisherResolver) GetRepo(ctx context.Context, installationID int64, owner, name string) (*RepoSummary, error) {
+	client, err := r.factory.Client(installationID)
+	if err != nil {
+		return nil, err
+	}
+	repo, _, err := client.Repositories.Get(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return &RepoSummary{DefaultBranch: repo.GetDefaultBranch()}, nil
+}
+
+// ListIssues 列一页 Issue（issues_read 的实测旁证）。
+func (r *PublisherResolver) ListIssues(ctx context.Context, installationID int64, owner, name string, limit int) ([]int64, error) {
+	client, err := r.factory.Client(installationID)
+	if err != nil {
+		return nil, err
+	}
+	list, _, err := client.Issues.ListByRepo(ctx, owner, name,
+		&githubpkg.IssueListByRepoOptions{ListOptions: githubpkg.ListOptions{PerPage: limit}})
+	if err != nil {
+		return nil, err
+	}
+	numbers := make([]int64, 0, len(list))
+	for _, iss := range list {
+		numbers = append(numbers, int64(iss.GetNumber()))
+	}
+	return numbers, nil
+}

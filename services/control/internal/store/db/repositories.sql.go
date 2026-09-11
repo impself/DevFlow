@@ -58,3 +58,57 @@ func (q *Queries) GetRepositoryByNumericID(ctx context.Context, repoNumericID in
 	)
 	return i, err
 }
+
+const upsertRepository = `-- name: UpsertRepository :one
+INSERT INTO repositories (id, repo_numeric_id, owner, name, default_branch, installation_id, capabilities, policy_version)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (repo_numeric_id) DO UPDATE SET
+    owner = EXCLUDED.owner,
+    name = EXCLUDED.name,
+    default_branch = EXCLUDED.default_branch,
+    installation_id = EXCLUDED.installation_id,
+    capabilities = EXCLUDED.capabilities,
+    updated_at = now()
+RETURNING id, repo_numeric_id, owner, name, default_branch, installation_id, capabilities, policy_version, status, created_at, updated_at
+`
+
+type UpsertRepositoryParams struct {
+	ID             string
+	RepoNumericID  int64
+	Owner          string
+	Name           string
+	DefaultBranch  string
+	InstallationID int64
+	Capabilities   []byte
+	PolicyVersion  string
+}
+
+// 接入/更新仓库（能力检查通过后调用）。repo_numeric_id 是锚点：
+// 重名/改名场景按数字 ID upsert，owner/name 跟随更新。
+func (q *Queries) UpsertRepository(ctx context.Context, arg UpsertRepositoryParams) (Repository, error) {
+	row := q.db.QueryRow(ctx, upsertRepository,
+		arg.ID,
+		arg.RepoNumericID,
+		arg.Owner,
+		arg.Name,
+		arg.DefaultBranch,
+		arg.InstallationID,
+		arg.Capabilities,
+		arg.PolicyVersion,
+	)
+	var i Repository
+	err := row.Scan(
+		&i.ID,
+		&i.RepoNumericID,
+		&i.Owner,
+		&i.Name,
+		&i.DefaultBranch,
+		&i.InstallationID,
+		&i.Capabilities,
+		&i.PolicyVersion,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

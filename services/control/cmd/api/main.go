@@ -128,6 +128,7 @@ type server struct {
 	store         *store.Store
 	webhook       *controller.WebhookHandler
 	approval      *controller.ApprovalHandler
+	query         *controller.QueryHandler
 	publisher     *publisher.Publisher
 	operatorToken string
 }
@@ -153,6 +154,14 @@ func (s *server) router() *gin.Engine {
 		// 再核对：RECONCILING 态的人工重核入口（review P1-2——
 		// GitHub 读延迟下查无实据不是永久结论，观察窗后可再核）
 		operator.POST("/actions/:actionID/reconcile", s.reconcileAction)
+
+		// 工作台查询与接入（US3）
+		operator.POST("/repositories", s.query.OnboardRepository)
+		operator.GET("/repositories", s.query.ListRepositories)
+		operator.GET("/cases", s.query.ListCases)
+		operator.GET("/cases/:caseID", s.query.GetCase)
+		operator.GET("/runs/:runID", s.query.GetRun)
+		operator.POST("/runs/:runID/cancel", s.query.CancelRun)
 	}
 	return r
 }

@@ -92,7 +92,7 @@
 
 **Independent Test**: quickstart.md 场景 E（杀进程 → RECOVERING → 接管）、F（能力缺失 422）+ 界面走查
 
-- [ ] T026 [US3] 对外查询与接入 API：`cmd/api` 路由 + `internal/controller/query.go`——GET repositories/cases/cases/{id}/runs/{id}（含提交轨迹与 model_calls）、POST repositories（能力检查，缺失 422 返回清单，AC01）、POST runs/{id}/cancel（CANCEL_REQUESTED 最小状态机）
+- [x] T026 [US3] 对外查询与接入 API：`cmd/api` 路由 + `internal/controller/query.go`——GET repositories/cases/cases/{id}/runs/{id}（含提交轨迹与 model_calls）、POST repositories（能力检查，缺失 422 返回清单，AC01）、POST runs/{id}/cancel（CANCEL_REQUESTED 最小状态机）
 - [ ] T027 [US3] 前端列表与接入页：`web/src/pages/RepoSetup.tsx`、`web/src/pages/CaseList.tsx`——接入表单（422 展示缺失能力）、Case 列表（状态徽标、来源 Issue 链接）
 - [ ] T028 [US3] 前端任务详情页：`web/src/pages/CaseDetail.tsx`——输入快照、草稿 Markdown（sanitize 渲染，PRD §6.4）、证据列表（path+lines+sha，可点开引用原文）、Run 状态轨迹、model_calls 费用、批准/拒绝按钮（批准前显示目标与内容摘要）
 - [ ] T029 [US3] 恢复取证辅助：`tests/control/recovery_manual_test.md`——场景 E 操作步骤（强杀 runner → 观察租约到期接管与 lease_epoch 变化 → 旧 epoch 写回被拒的日志/审计位置）
