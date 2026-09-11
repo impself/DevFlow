@@ -59,10 +59,46 @@ UPDATE ... WHERE id = (SELECT id ... FOR UPDATE SKIP LOCKED LIMIT 1)
 
 **面试讲法**：*「我核实过 GitHub 评论 API 没有幂等键，所以不确定结果时我只做 reconciliation（按 bot 身份+内容全文核对远端），查无实据转人工——这是 Stripe 对外部非幂等 API 的标准立场，不是过度保守。」*
 
-## 2. Agent 工程（详见 agent 调研文档，待补充）
+## 2. Agent 工程（第二轮调研已归档）
 
-- 结构化输出四层防线 ↔ 各家官方 structured output 指南（调研中）
-- 证据引用可核对 ↔ citation/grounding 工程（调研中）
+### 2.1 结构化输出多层兜底
+
+- arXiv 2606.09395（2026，结构化输出实证研究）：grammar-constrained decoding **necessary but insufficient**——语法错误几乎消灭，结构/语义错误依然存在。我们的 Pydantic 校验 + 重试预算 + NEEDS_INFO 降级正是论文结论的工程化。
+- arXiv 2606.25605「约束税」：schema 约束会静默抑制部分模型能力——不能默认"开了 JSON mode 就更可靠"，必须独立评测 + 运行时兜底。
+- OpenAI cookbook：strict mode 仍有 `refusal` 字段（官方承认约束可被打破并给显式信号）；GPT-3 时代但仍是官方建议的 halter 哲学——"宁可无答案，不可编造"（no answer preferable to hallucinated guess）。
+
+### 2.2 防循环（bot 判定）——已修复的 P0
+
+- claude-code-action（Anthropic 官方）：bot 判定**不靠名字后缀，靠 Users API `type` 字段**（`actorType !== "User"` 即拒），注释专门点名 Copilot 这类不以 `[bot]` 结尾的 App。
+- pr-agent：用 webhook payload 自带的 `sender_type == "Bot"`（零 API 调用）。
+- **我们的修复**：`isBotSender` 优先 `sender.type == "Bot"`，`[bot]` 后缀仅兜底（commit 待打）。
+- GitHub 平台层先例：GITHUB_TOKEN 触发的事件不会递归触发 workflow——"平台层防递归"是公认必要。
+- **我们超出业界**：delivery_id 去重在两个参照项目均不存在。
+
+### 2.3 引用可靠性（citation/grounding）——verbatim gate 已落地
+
+- Gemini cookbook（Citation Faithfulness Check）：引用失败三分类 **Fabricated / Frankenquote / Misattributed**；两级瀑布 = **0-token verbatim gate（纯代码，fail-closed）→ 昂贵判官**——"fabrications never reach it, so they cost zero tokens"；**"A found citation is not yet correct"**（存在性≠支持性，支持性交人工判官=我们的审批门）。
+- Anthropic Citations API：引用是 API 服务端结构化对象（char offset + cited_text + document_index 三重绑定），模型无法凭空产出未在文档中的 cited_text。
+- CAMS（arXiv 2606.23989，2026）：可归因要 **by construction**——我们的 path+sha+lines 是 schema 必填结构（构造出来的不变量），且 sha 比商业 API 多钉了内容版本。
+- LayerRAG-Bench（arXiv 2607.27353）：**引用存在≠引用仍有效**（stale evidence）——sha 把证据钉在 commit 上正是防这个。
+- Sufficient Context（Google，ICLR 2025）：强模型上下文不足时倾向硬答不弃权——**NEEDS_INFO = selective generation/abstention 的工程化**。
+- **我们的落地**：`gateEvidence` 逐字门（0 token，Go 侧）：quote 空白归一后必须逐字出现在预取文件 + 行号必须框得住 quote；ANSWER_READY 失去全部证据 → 降级。
+
+### 2.4 成本护栏
+
+- OpenAI cookbook（per-run spending controller）：**成本无法确认即永久熔断**（UncertainCharge），而非记 0 继续；reserve→call→settle→refund 模式。
+- Arize 案例（2026-08）：生产 agent 两个隐藏重试循环 **43 次重复工具调用、root span 全绿**——"agent 的 bug 不表现为报错，而表现为看似在推进的行为"，只有预算限制止损。⇒ 24 次调用预算的最强实战论据。
+- Anthropic 多 agent 系统（2025-06）：agent 耗 ~15 倍 token、token 量解释 80% 性能方差——逐调用记账是成本可解释性的前提。
+- Context rot（arXiv 2607.17937）：上下文 ~11K→~299K 时 pass rate 8/10→3/10——**900s 上限同时是质量护栏**。
+- 差距（记为演进项）：金额预算维度（reserve/settle）与"费用取不到=熔断"语义（我们的合同层已强制 usage 必填，token 缺失时估算——比熔断宽松，记为已知取舍）。
+
+### 2.5 编排与 durable execution 趋势
+
+- Restate（Flink 作者执笔，2025-06）：**"Agent 就是一个分布式系统循环"**——重试可能重复副作用，解法是 journal+replay；人工审批 = durable promise 的自研等价物。
+- Restate（2026-06）：PG/SDK 式 checkpoint 是 restart 不是 recovery，需要 step 级 journal 与 **fencing token**——我们的 epoch 又一次被点名背书。
+- Temporal Agent Harness（2026-08）：审批策略 **"enforced in the harness, not in model instructions"**——我们的门在 Go 控制层，不在 prompt。
+- DBOS（2026-05/06）：**"Postgres Is All You Need for Durable Workflows"**（workflow 状态 checkpoint 进库，DB 本身就是编排器）+ 实测 SKIP LOCKED + 部分索引到 30K workflows/s——Go+PG 架构的正面论证与规模化证据。
+- LangGraph Persistence：PostgresSaver checkpoint + HITL interrupt——我们等于手写了它的最小子集。
 
 ## 3. 已识别的改进项（落地跟踪）
 
@@ -76,3 +112,8 @@ UPDATE ... WHERE id = (SELECT id ... FOR UPDATE SKIP LOCKED LIMIT 1)
 | 6 | 毒 run 重试预算（attempts/max） | 建议 | **已落地**（0002 迁移 + 清道夫终结，测试 TestRetryBudget） |
 | 7 | 心跳 churn 治理（UNLOGGED 副表） | 建议 | 量级未到，记为已知权衡 |
 | 8 | 核对键限定 [bot] 账号 | 建议 | **已落地**（T024 review 修复） |
+| 9 | bot 判定用 sender.type | agent P0 | **已落地**（isBotSender，12 用例含 Copilot 类命名） |
+| 10 | 引用 verbatim gate | agent P0 | **已落地**（gateEvidence，5 用例：fabricated/行号越界/空白容差等） |
+| 11 | 成本不可确认即熔断 | agent P0 | 部分满足：合同层强制 usage 必填；token 缺失走估算——记为已知取舍（M1 单操作者可控） |
+| 12 | 金额预算（reserve/settle） | agent P1 | 演进项（次数预算已有，金额维度待加） |
+| 13 | 降级原因码 / 反馈重试 | agent P1 | 演进项（需改合同 schema，走合同先行流程） |

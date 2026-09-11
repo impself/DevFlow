@@ -80,7 +80,7 @@ func executeFixture(t *testing.T) (*store.Store, controller.Claim, *fakeContents
 	return st, claim, &fakeContents{
 		head: "fixed0sha",
 		files: map[string]*github.FileContent{
-			"README.md": {Path: "README.md", SHA: "deadbee", Size: 11, Content: []byte("pages at 0")},
+			"README.md": {Path: "README.md", SHA: "deadbee", Size: 44, Content: []byte("first line\nsecond line\npages start at 0")},
 		},
 	}, controller.NewArtifactStore(st, dir), dir
 }

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -136,6 +137,19 @@ func (e *RunExecutor) Execute(ctx context.Context, claim Claim) (string, error) 
 		return "", fmt.Errorf("智能层返回的 run_id 不匹配: got %s want %s", out.RunID, claim.ID)
 	}
 
+	// 6.5 引用逐字门（调研 P0-2，对齐 Gemini Citation Faithfulness Check）：
+	// 0-token 纯机械核对——quote 必须逐字出现在预取文件里，行号必须框得住 quote。
+	// 防三类失败：fabricated（编造引用）、frankenquote（拼接引用）、编造行号。
+	// 未命中条目剔除；ANSWER_READY 失去全部证据 → 降级 NEEDS_INFO（弃答优于编造）。
+	commitPayload := raw
+	if gateEvidence(&out, files) {
+		modified, mErr := json.Marshal(out)
+		if mErr == nil {
+			commitPayload = modified
+		}
+		slog.Warn("引用逐字门拦截：证据被剔除或降级", "run", claim.ID, "outcome", out.Outcome)
+	}
+
 	// 7. 记费用（FR-10/AC47）：失败只记日志，不因记账失败毁掉一次成功的分析
 	e.recordUsage(ctx, claim.ID, out.Usage)
 
@@ -148,8 +162,9 @@ func (e *RunExecutor) Execute(ctx context.Context, claim Claim) (string, error) 
 		}
 	}
 
-	// 8. 原子提交（AC23–26）：回执 + 终态同事务
-	if err := e.commit(ctx, claim, out.Outcome, raw); err != nil {
+	// 8. 原子提交（AC23–26）：回执 + 终态同事务。
+	// 提交的是逐字门之后的规范化结果；原始模型输出已在 raw_model_io 留档。
+	if err := e.commit(ctx, claim, out.Outcome, commitPayload); err != nil {
 		return "", err
 	}
 	return out.Outcome, nil
@@ -226,6 +241,73 @@ func (e *RunExecutor) recordUsage(ctx context.Context, runID string, u contract.
 	if err != nil {
 		slog.Error("记录模型费用失败", "run", runID, "err", err)
 	}
+}
+
+// gateEvidence 原地核对并修正 out 的 evidence；返回是否发生了降级。
+// 规则（0 token，纯 Go）：
+//   - quote 空或预取文件里找不到 path → 剔除该条；
+//   - 给了行号：quote（空白归一后）必须是该行区间内容的子串——防编造行号；
+//   - ANSWER_READY 剔完后无证据 → 降级 NEEDS_INFO（degraded=true）。
+//
+// 空白归一（折叠连续空白）对齐 Gemini notebook 的 normalize：容忍换行/缩进差异，
+// 不容忍内容差异。
+func gateEvidence(out *contract.AgentOutput, files []runtimeclient.File) bool {
+	byPath := make(map[string]string, len(files))
+	for _, f := range files {
+		byPath[f.Path] = f.Content
+	}
+
+	kept := out.Evidence[:0]
+	for _, ev := range out.Evidence {
+		if !evidenceMatches(ev, byPath[ev.Location.Path]) {
+			continue
+		}
+		kept = append(kept, ev)
+	}
+	out.Evidence = kept
+
+	if out.Outcome == "ANSWER_READY" && len(kept) == 0 {
+		out.Outcome = "NEEDS_INFO"
+		out.Degraded = true
+		out.ReplyMarkdown = ""
+		out.NeedsInfoQuestions = []string{
+			"（系统降级）模型给出的引用未能通过逐字核对，请补充更具体的问题描述。",
+		}
+		return true
+	}
+	return len(kept) != len(out.Evidence) || false
+}
+
+// evidenceMatches 核对单条证据：quote 必须逐字（空白归一）出现在 content 中；
+// 带行号时进一步要求落在 [line_start, line_end] 区间内。
+func evidenceMatches(ev contract.Evidence, content string) bool {
+	quote := normalizeWS(ev.Quote)
+	if quote == "" || content == "" {
+		return false // fail-closed：空 quote / 缺文件一律不认（调研原则）
+	}
+	if !strings.Contains(normalizeWS(content), quote) {
+		return false // fabricated / frankenquote
+	}
+	if ev.Location.LineStart > 0 {
+		lines := strings.Split(content, "\n")
+		start, end := int(ev.Location.LineStart), int(ev.Location.LineEnd)
+		if end < start {
+			end = start
+		}
+		if start < 1 || end > len(lines) {
+			return false // 行号越界 = 编造
+		}
+		span := strings.Join(lines[start-1:end], "\n")
+		if !strings.Contains(normalizeWS(span), quote) {
+			return false // quote 存在但不在声称的行区间
+		}
+	}
+	return true
+}
+
+// normalizeWS 折叠连续空白为单个空格（引用比对的容差下限）。
+func normalizeWS(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // issueAuthor 从快照补充字段里取 author（T011 之后的快照有；旧快照容忍为空）。
