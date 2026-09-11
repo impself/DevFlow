@@ -122,6 +122,7 @@ func (h *WebhookHandler) createCaseAndRun(ctx context.Context, d *github.Deliver
 			"id":         evt.Issue.GetID(),
 			"title":      evt.Issue.GetTitle(),
 			"body":       evt.Issue.GetBody(),
+			"author":     evt.Issue.User.GetLogin(), // openapi 要求 issue.author
 			"updated_at": evt.Issue.GetUpdatedAt().Format(time.RFC3339),
 		},
 		"repo": map[string]any{

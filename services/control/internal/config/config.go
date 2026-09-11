@@ -27,12 +27,16 @@ type Config struct {
 
 	// InternalToken 是 Go ↔ Python 服务间共享密钥（宪法 III：凭据隔离）。
 	InternalToken string
+
+	// RuntimeURL 是 Python 智能层的基地址（runner 出站调用用），仅 runner 消费。
+	RuntimeURL string
 }
 
 // Load 读取环境变量并校验必填项，缺失时返回包含具体变量名的错误。
 func Load() (Config, error) {
 	cfg := Config{
 		APIAddr:              getenv("CONTROL_API_ADDR", ":8080"),
+		RuntimeURL:           getenv("RUNTIME_URL", "http://127.0.0.1:8100"),
 		DatabaseURL:          os.Getenv("DATABASE_URL"),
 		GitHubWebhookSecret:  os.Getenv("GITHUB_WEBHOOK_SECRET"),
 		GitHubAppID:          os.Getenv("GITHUB_APP_ID"),

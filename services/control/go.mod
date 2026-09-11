@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/go-github/v90 v90.0.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 )
 
 require (

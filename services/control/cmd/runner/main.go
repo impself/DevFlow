@@ -8,12 +8,15 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/impself/DevFlow/services/control/internal/config"
 	"github.com/impself/DevFlow/services/control/internal/controller"
+	"github.com/impself/DevFlow/services/control/internal/github"
 	"github.com/impself/DevFlow/services/control/internal/obs"
+	"github.com/impself/DevFlow/services/control/internal/runtimeclient"
 	"github.com/impself/DevFlow/services/control/internal/store"
 )
 
@@ -49,19 +52,26 @@ func run() error {
 	}
 	logger.Info("数据库就绪")
 
-	// M1 占位钩子：T014 换成「调 Python 分析 + 原子提交」的真实现。
-	execute := func(ctx context.Context, claim controller.Claim) (string, error) {
-		logger.Info("（占位）执行 run", "run", claim.ID, "epoch", claim.LeaseEpoch)
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-time.After(200 * time.Millisecond): // 模拟一次模型调用
-			return "ANSWER_READY", nil
-		}
+	// GitHub App 身份：与 api 相同的 fail-fast 装配（T014 预取需要）
+	privateKeyPEM, err := os.ReadFile(cfg.GitHubPrivateKeyPath)
+	if err != nil {
+		return fmt.Errorf("读取 GitHub App 私钥: %w", err)
+	}
+	appID, err := strconv.ParseInt(cfg.GitHubAppID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("GITHUB_APP_ID 应为数字: %w", err)
+	}
+	ghFactory, err := github.NewClientFactory(appID, privateKeyPEM)
+	if err != nil {
+		return err
 	}
 
+	// 出站客户端：分析调用 300s 兜底超时（run 总预算 900s 在执行器层）
+	analyzer := runtimeclient.New(cfg.RuntimeURL, cfg.InternalToken, 5*time.Minute)
+
 	owner := fmt.Sprintf("runner-%d", os.Getpid())
-	worker := controller.NewWorker(st, owner, execute)
+	executor := controller.NewRunExecutor(st, github.NewContents(ghFactory), analyzer, owner)
+	worker := controller.NewWorker(st, owner, executor.Execute)
 
 	errCh := make(chan error, 2)
 	go func() { errCh <- worker.Run(ctx) }()
