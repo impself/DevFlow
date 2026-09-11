@@ -28,3 +28,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T016 | [T016-issue-agent.md](./T016-issue-agent.md) | Issue Agent：结构化输出四层防线、重试预算、显式降级、行号注入（核心 agent 考点） |
 | T017 | [T017-analysis-endpoint.md](./T017-analysis-endpoint.md) | 分析端点：503 重试语义、constant-time 鉴权、FastAPI 序列化陷阱 |
 | T018 | [T018-artifacts.md](./T018-artifacts.md) | 产物落库：content-addressable、先文件后库、supersede 事务不变量 |
+| T019 | [T019-lease-concurrency-tests.md](./T019-lease-concurrency-tests.md) | 并发协议测试：16 抢 8 互斥、续租时序断言、接管全链路导演 |
