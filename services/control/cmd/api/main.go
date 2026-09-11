@@ -19,6 +19,7 @@ import (
 	"github.com/impself/DevFlow/services/control/internal/config"
 	"github.com/impself/DevFlow/services/control/internal/controller"
 	"github.com/impself/DevFlow/services/control/internal/github"
+	"github.com/impself/DevFlow/services/control/internal/middleware"
 	"github.com/impself/DevFlow/services/control/internal/obs"
 	"github.com/impself/DevFlow/services/control/internal/store"
 )
@@ -83,8 +84,10 @@ func run() error {
 	_ = ghFactory // T014（预取文件）与 publisher（发布评论）将注入使用
 
 	deps := &server{
-		store:   st,
-		webhook: controller.NewWebhookHandler(st, cfg.GitHubWebhookSecret),
+		store:         st,
+		webhook:       controller.NewWebhookHandler(st, cfg.GitHubWebhookSecret),
+		approval:      controller.NewApprovalHandler(controller.NewApprovalService(st)),
+		operatorToken: cfg.OperatorToken,
 	}
 	srv := &http.Server{
 		Addr:    cfg.APIAddr,
@@ -118,8 +121,10 @@ func run() error {
 // server 持有路由处理函数共享的依赖。
 // 依赖集中注入而不是用全局变量，是为了让每个 handler 都可以独立构造、单测。
 type server struct {
-	store   *store.Store
-	webhook *controller.WebhookHandler
+	store         *store.Store
+	webhook       *controller.WebhookHandler
+	approval      *controller.ApprovalHandler
+	operatorToken string
 }
 
 func (s *server) router() *gin.Engine {
@@ -131,6 +136,14 @@ func (s *server) router() *gin.Engine {
 	r.GET("/healthz", s.healthz)
 	// webhook 的身份认证就是 HMAC 验签本身，不再叠加其他认证
 	r.POST("/webhook", s.webhook.Handle)
+
+	// 操作者 API：服务端令牌认证（AC32），不信任请求声明身份
+	operator := r.Group("/api", middleware.OperatorAuth(s.operatorToken))
+	{
+		operator.POST("/cases/:caseID/approval-bundle", s.approval.Create)
+		operator.POST("/bundles/:bundleID/approve", s.approval.Approve)
+		operator.POST("/bundles/:bundleID/reject", s.approval.Reject)
+	}
 	return r
 }
 

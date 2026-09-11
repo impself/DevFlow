@@ -33,6 +33,9 @@ type Config struct {
 
 	// ArtifactDir 是产物落盘目录（content-addressable），仅 runner 消费。
 	ArtifactDir string
+
+	// OperatorToken 是操作者 API 的共享令牌（M1 单操作者，宪法 II）。
+	OperatorToken string
 }
 
 // Load 读取环境变量并校验必填项，缺失时返回包含具体变量名的错误。
@@ -41,6 +44,7 @@ func Load() (Config, error) {
 		APIAddr:              getenv("CONTROL_API_ADDR", ":8080"),
 		RuntimeURL:           getenv("RUNTIME_URL", "http://127.0.0.1:8100"),
 		ArtifactDir:          getenv("ARTIFACT_DIR", "data/artifacts"),
+		OperatorToken:        os.Getenv("OPERATOR_TOKEN"),
 		DatabaseURL:          os.Getenv("DATABASE_URL"),
 		GitHubWebhookSecret:  os.Getenv("GITHUB_WEBHOOK_SECRET"),
 		GitHubAppID:          os.Getenv("GITHUB_APP_ID"),
@@ -56,6 +60,7 @@ func Load() (Config, error) {
 		{"GITHUB_APP_ID", cfg.GitHubAppID},
 		{"GITHUB_APP_PRIVATE_KEY_PATH", cfg.GitHubPrivateKeyPath},
 		{"DEVFLOW_INTERNAL_TOKEN", cfg.InternalToken},
+		{"OPERATOR_TOKEN", cfg.OperatorToken},
 	}
 	var missing []string
 	for _, r := range required {

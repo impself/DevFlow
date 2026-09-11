@@ -30,3 +30,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T018 | [T018-artifacts.md](./T018-artifacts.md) | 产物落库：content-addressable、先文件后库、supersede 事务不变量 |
 | T019 | [T019-lease-concurrency-tests.md](./T019-lease-concurrency-tests.md) | 并发协议测试：16 抢 8 互斥、续租时序断言、接管全链路导演 |
 | T020 | [T020-approval-bundle.md](./T020-approval-bundle.md) | 审批包：目标×内容×时限三元组、结构派生幂等键、JSON 大整数精度坑 |
+| T021 | [T021-approval-endpoints.md](./T021-approval-endpoints.md) | 批准/拒绝端点：薄 handler、三 AC 会师、中间件泛化时机 |
