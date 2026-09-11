@@ -27,9 +27,10 @@ SET status = 'REJECTED'
 WHERE id = $1 AND status = 'PENDING';
 
 -- 单包失效：批准前核对发现内容/目标漂移时立即翻 EXPIRED（AC33）。
+-- 含 EXECUTING：发布流程先占位 EXECUTING 再重核，重核失败必须能作废。
 -- name: ExpireBundle :execrows
 UPDATE approval_bundles SET status = 'EXPIRED'
-WHERE id = $1 AND status IN ('PENDING', 'APPROVED');
+WHERE id = $1 AND status IN ('PENDING', 'APPROVED', 'EXECUTING');
 
 -- 过期清扫：批处理把过期的 PENDING/APPROVED 翻 EXPIRED（24h 时效，PRD §15.2）。
 -- name: ExpireStaleBundles :execrows

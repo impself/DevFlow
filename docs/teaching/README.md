@@ -1,6 +1,6 @@
 # Spec-001 教学笔记索引
 
-M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解：每个任务完成后记录
+M1 主线竖切逐任务教学笔记 + [架构×业界对照表](./research-alignment.md)（面试弹药库）：每个任务完成后记录
 改动内容、关键语法、背后原理、设计权衡与放弃的备选方案，供操作者 review。
 > **教学重点（2026-09-11 更新，面试导向）**：笔记聚焦 agent 工程、后端架构与 Go 语法；
 > 前端/部署等外围任务只记结论，不展开。
@@ -31,3 +31,4 @@ M1 主线竖切（specs/001-m1-vertical-slice）逐任务实现的教学讲解�
 | T019 | [T019-lease-concurrency-tests.md](./T019-lease-concurrency-tests.md) | 并发协议测试：16 抢 8 互斥、续租时序断言、接管全链路导演 |
 | T020 | [T020-approval-bundle.md](./T020-approval-bundle.md) | 审批包：目标×内容×时限三元组、结构派生幂等键、JSON 大整数精度坑 |
 | T021 | [T021-approval-endpoints.md](./T021-approval-endpoints.md) | 批准/拒绝端点：薄 handler、三 AC 会师、中间件泛化时机 |
+| T022-024 | [T022-024-publisher-chain.md](./T022-024-publisher-chain.md) | 发布链：错误分类学、恢复语义、reconciliation（面试重点） |

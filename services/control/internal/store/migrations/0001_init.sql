@@ -186,12 +186,13 @@ CREATE TABLE actions (
     remote_comment_id bigint,               -- 核对锚点
     remote_url        text,
     receipt           jsonb,                -- action-receipt.schema.json 结构
-    attempts          integer NOT NULL DEFAULT 0,
+    attempts          integer NOT NULL DEFAULT 0,  -- M1 未启用（预留重试计数；UNCERTAIN 同）
     created_at        timestamptz NOT NULL DEFAULT now(),
     executed_at       timestamptz,
     reconciled_at     timestamptz
 );
-CREATE INDEX actions_bundle_idx ON actions (bundle_id);
+-- bundle:action 恒 1:1：唯一约束让任何旁路建 action 都被数据库拒绝（review P2-3）
+CREATE UNIQUE INDEX actions_bundle_idx ON actions (bundle_id);
 
 -- ===== 模型调用与费用（FR-10，AC47） =====
 -- cost 不得记零：估算不出也要给非零估计 + estimated 标记

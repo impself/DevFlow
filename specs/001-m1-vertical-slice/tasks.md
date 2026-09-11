@@ -77,9 +77,9 @@
 
 - [x] T020 [US2] 审批包生成：`internal/controller/approval.go`——draft → approval_bundles（target 精确到 repo_numeric_id+issue_number、content_digest=draft body_digest、expires_at=+24h、idempotency_key 唯一）
 - [x] T021 [US2] 批准/拒绝端点：`cmd/api` 路由 + `internal/controller/approval.go`——操作者服务端认证（M1 单操作者 token，不信任请求声明身份，AC32）、过期或内容/目标变化返回 409（AC33）、重复批准按 idempotency 回显原结果（AC35）
-- [ ] T022 [US2] 发布前重核：`internal/publisher/preflight.go`——执行前重查 Issue 未关闭、无新的相关人类回复、草稿仍适用；不满足则 bundle 标 EXPIRED 并说明（FR-8）
-- [ ] T023 [US2] 评论发布与回执：`internal/publisher/comment.go`——go-github `Issues.CreateComment`，action 状态机 PENDING→EXECUTING→SUCCEEDED/FAILED，落 action-receipt（remote_comment_id + remote_url）
-- [ ] T024 [US2] 响应丢失核对：`internal/publisher/reconcile.go`——超时/网络错误进入 RECONCILING：按目标+身份拉取 Issue 评论列表按 content_digest 核对，命中即 SUCCEEDED 并记录 remote_comment_id；不命中且无不确定证据才允许人工决策，绝不自动重发（AC36）
+- [x] T022 [US2] 发布前重核：`internal/publisher/preflight.go`——执行前重查 Issue 未关闭、无新的相关人类回复、草稿仍适用；不满足则 bundle 标 EXPIRED 并说明（FR-8）
+- [x] T023 [US2] 评论发布与回执：`internal/publisher/comment.go`——go-github `Issues.CreateComment`，action 状态机 PENDING→EXECUTING→SUCCEEDED/FAILED，落 action-receipt（remote_comment_id + remote_url）
+- [x] T024 [US2] 响应丢失核对：`internal/publisher/reconcile.go`——超时/网络错误进入 RECONCILING：按目标+身份拉取 Issue 评论列表按 content_digest 核对，命中即 SUCCEEDED 并记录 remote_comment_id；不命中且无不确定证据才允许人工决策，绝不自动重发（AC36）
 - [ ] T025 [US2] 审批合同测试：`tests/contract/test_approval_bundle.py`（approval-bundle / action-receipt schema 校验 + 过期/失效规则用例）
 
 **Checkpoint**: quickstart 场景 B 通过——评论数恒等于 1，三类扰动全部验证

@@ -21,7 +21,9 @@ import (
 	"github.com/impself/DevFlow/services/control/internal/github"
 	"github.com/impself/DevFlow/services/control/internal/middleware"
 	"github.com/impself/DevFlow/services/control/internal/obs"
+	"github.com/impself/DevFlow/services/control/internal/publisher"
 	"github.com/impself/DevFlow/services/control/internal/store"
+	"github.com/impself/DevFlow/services/control/internal/store/db"
 )
 
 func main() {
@@ -81,12 +83,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	_ = ghFactory // T014（预取文件）与 publisher（发布评论）将注入使用
 
 	deps := &server{
-		store:         st,
-		webhook:       controller.NewWebhookHandler(st, cfg.GitHubWebhookSecret),
-		approval:      controller.NewApprovalHandler(controller.NewApprovalService(st)),
+		store:    st,
+		webhook:  controller.NewWebhookHandler(st, cfg.GitHubWebhookSecret),
+		approval: controller.NewApprovalHandler(controller.NewApprovalService(st)),
+		// 发布链：ghFactory 在这里兑现「写 GitHub 的唯一身份」——review P0 教训：
+		// 字段加了没接线 = nil 指针，端点 100% panic，编译器不救你。
+		publisher:     publisher.NewPublisher(st, github.NewPublisherResolver(st, ghFactory), cfg.ArtifactDir),
 		operatorToken: cfg.OperatorToken,
 	}
 	srv := &http.Server{
@@ -124,6 +128,7 @@ type server struct {
 	store         *store.Store
 	webhook       *controller.WebhookHandler
 	approval      *controller.ApprovalHandler
+	publisher     *publisher.Publisher
 	operatorToken string
 }
 
@@ -143,8 +148,45 @@ func (s *server) router() *gin.Engine {
 		operator.POST("/cases/:caseID/approval-bundle", s.approval.Create)
 		operator.POST("/bundles/:bundleID/approve", s.approval.Approve)
 		operator.POST("/bundles/:bundleID/reject", s.approval.Reject)
+		// 发布：批准后的显式动作（发布链内部自带重核、幂等与恢复语义）
+		operator.POST("/bundles/:bundleID/publish", s.publishBundle)
+		// 再核对：RECONCILING 态的人工重核入口（review P1-2——
+		// GitHub 读延迟下查无实据不是永久结论，观察窗后可再核）
+		operator.POST("/actions/:actionID/reconcile", s.reconcileAction)
 	}
 	return r
+}
+
+// publishBundle 的错误映射（review P1-6）：
+// 哨兵域错误→409/200 回显；不存在→404；其余→500 详情只进日志。
+func (s *server) publishBundle(c *gin.Context) {
+	act, err := s.publisher.Publish(c.Request.Context(), c.Param("bundleID"))
+	s.writeActionResult(c, act, err, "bundle", c.Param("bundleID"))
+}
+
+func (s *server) reconcileAction(c *gin.Context) {
+	act, err := s.publisher.Reconcile(c.Request.Context(), c.Param("actionID"))
+	s.writeActionResult(c, act, err, "action", c.Param("actionID"))
+}
+
+// writeActionResult 统一发布/核对的响应语义。
+func (s *server) writeActionResult(c *gin.Context, act db.Action, err error, kind, id string) {
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"action": act})
+	case errors.Is(err, publisher.ErrActionAlreadyMoved):
+		c.JSON(http.StatusOK, gin.H{"action": act, "detail": err.Error()})
+	case errors.Is(err, publisher.ErrNeedsManualDecision):
+		c.JSON(http.StatusConflict, gin.H{"action": act, "detail": err.Error()})
+	case errors.Is(err, publisher.ErrBundleNotApproved):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, store.ErrNoRows):
+		c.JSON(http.StatusNotFound, gin.H{"error": kind + " 不存在"})
+	default:
+		// 内部错误详情（DB 错误文本、远端请求 ID）只进日志，不回显
+		slog.Error("发布链失败", "err", err, kind, id)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "发布链失败，详情见服务日志"})
+	}
 }
 
 // healthz 是健康检查与依赖状态页（PRD §26.3）：

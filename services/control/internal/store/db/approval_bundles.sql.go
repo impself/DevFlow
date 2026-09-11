@@ -34,10 +34,11 @@ func (q *Queries) ApproveBundle(ctx context.Context, arg ApproveBundleParams) (i
 
 const expireBundle = `-- name: ExpireBundle :execrows
 UPDATE approval_bundles SET status = 'EXPIRED'
-WHERE id = $1 AND status IN ('PENDING', 'APPROVED')
+WHERE id = $1 AND status IN ('PENDING', 'APPROVED', 'EXECUTING')
 `
 
 // 单包失效：批准前核对发现内容/目标漂移时立即翻 EXPIRED（AC33）。
+// 含 EXECUTING：发布流程先占位 EXECUTING 再重核，重核失败必须能作废。
 func (q *Queries) ExpireBundle(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, expireBundle, id)
 	if err != nil {
